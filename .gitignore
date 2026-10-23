@@ -1,0 +1,6 @@
+audio/
+*.mp4
+*.srt
+__pycache__/
+media/
+.DS_Store
