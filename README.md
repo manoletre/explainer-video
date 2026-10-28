@@ -3,7 +3,7 @@
 A [Claude Code](https://claude.com/claude-code) skill for narrated explainer videos.
 Ask Claude for "an animated explainer of this paper". It researches the source, writes
 a narration script, animates it with [ManimGX](https://pypi.org/project/manimgx/), and voices it
-locally with [LFM2.5-Audio](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF). Every
+locally with [LFM3-Audio](https://huggingface.co/LiquidAI/LFM3-Audio-2B). Every
 animation is timed to the words that describe it. The result is an MP4 with subtitles plus a
 cheat sheet of the formulas and sources.
 
@@ -31,15 +31,14 @@ uv tool install manimgx
 ```
 
 ```bash
-~/.claude/skills/explainer-video/scripts/fetch_model.sh
+uv run ~/.claude/skills/explainer-video/scripts/lfm_audio.py fetch
 ```
 
 You also need `ffmpeg` and a LaTeX install for `MathTex` (for example `brew install ffmpeg` and
-MacTeX/BasicTeX on macOS). The model download is about 2 GB and goes to
-`~/.lmstudio/models/LiquidAI/LFM2.5-Audio-1.5B-GGUF/`. That's also where LM Studio puts it, so
-an existing LM Studio download gets reused. Set `LFM_AUDIO_CKPT` to use another folder.
-Runners exist for macOS arm64 and Linux x64/arm64. Set `LFM_AUDIO_RUNNER` to point at
-the binary directly.
+MacTeX/BasicTeX on macOS), plus [uv](https://docs.astral.sh/uv/). The voice runs on Hugging Face
+Transformers: `uv run` sets up torch and transformers for the scripts, and `fetch` downloads the 4 GB
+model into the Hugging Face cache (otherwise it downloads on first use). It runs on the Apple GPU,
+CUDA or the CPU. On an M-series Mac it speaks about as fast as real time.
 
 ## Use
 
@@ -53,15 +52,14 @@ layout inspection and render.
 ## What's inside
 
 - `SKILL.md`: the instructions Claude follows.
-- `scripts/lfm_audio.py`: TTS, ASR and word error rate on top of `llama-liquid-audio-cli`.
+- `scripts/lfm_audio.py`: TTS, ASR and word error rate with LFM3-Audio-2B on Transformers.
 - `scripts/make_narration.py`: generates and checks every narration clip; writes `audio/report.json`.
 - `scripts/lfm_voice.py`: plugs those clips into a ManimGX scene as its `voice`.
-- `scripts/fetch_model.sh`: downloads the model and runner.
 - `examples/sec/`: a complete 11 minute video explaining *Self-Evolving Curriculum for LLM
   Reasoning* (Chen et al., 2025). Run it yourself:
 
   ```bash
-  cd ~/.claude/skills/explainer-video && python3 scripts/make_narration.py examples/sec/narration.py && manimgx render examples/sec/sec_explainer.py
+  cd ~/.claude/skills/explainer-video && uv run scripts/make_narration.py examples/sec/narration.py && manimgx render examples/sec/sec_explainer.py
   ```
 
 ## License

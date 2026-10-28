@@ -1,10 +1,14 @@
-"""Generate narration clips with LFM2.5-Audio and check each one by transcribing it back.
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["transformers>=5.20.2", "torch", "accelerate", "librosa", "soundfile"]
+# ///
+"""Generate narration clips with LFM3-Audio and check each one by transcribing it back.
 
 Each line is synthesized up to TRIES times; the take whose ASR transcript is closest to the script wins.
 Writes audio/<key>.wav and audio/durations.json.
 
-    python make_narration.py path/to/narration.py           # all missing clips; written to path/to/audio/
-    python make_narration.py path/to/narration.py sb2 dr6   # redo these
+    uv run make_narration.py path/to/narration.py           # all missing clips; written to path/to/audio/
+    uv run make_narration.py path/to/narration.py sb2 dr6   # redo these
 """
 import importlib.util
 import json
@@ -12,7 +16,8 @@ import shutil
 import sys
 from pathlib import Path
 
-import lfm_audio as L
+sys.path.insert(0, str(Path(__file__).parent))
+import lfm_audio as L  # noqa: E402
 
 SCRIPT = Path(sys.argv.pop(1)) if len(sys.argv) > 1 and sys.argv[1].endswith(".py") else Path(__file__).parent / "narration.py"
 _spec = importlib.util.spec_from_file_location("narration", SCRIPT)
@@ -25,11 +30,6 @@ TRIES = 3
 GOOD = 0.08  # stop retrying below this word error rate
 
 
-def transcript(wav):
-    out = L.asr(wav)
-    return out.split("=== GENERATED TEXT ===")[-1].strip().splitlines()[0] if "=== GENERATED TEXT ===" in out else ""
-
-
 def main(keys):
     OUT.mkdir(exist_ok=True)
     report_path = OUT / "report.json"
@@ -40,7 +40,7 @@ def main(keys):
         for t in range(TRIES):
             take = OUT / f"_{key}_{t}.wav"
             L.tts(text, take, VOICE)
-            hyp = transcript(take)
+            hyp = L.asr(take)
             err = L.wer(text, hyp)
             # a take that is far longer than the text needs usually means babbling or a long silence
             secs = L.duration(take)

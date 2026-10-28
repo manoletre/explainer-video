@@ -1,4 +1,4 @@
-"""Self-Evolving Curriculum (Chen et al., arXiv 2505.14970), explained in ManimGX with LFM2.5-Audio narration.
+"""Self-Evolving Curriculum (Chen et al., arXiv 2505.14970), explained in ManimGX with LFM3-Audio narration.
 
     manimgx inspect sec_explainer.py      # layout report + storyboard
     manimgx render sec_explainer.py       # SECExplainer.mp4 beside this file

@@ -1,6 +1,6 @@
 ---
 name: explainer-video
-description: Make a narrated explainer video (MP4) about a paper, method or concept, animated with ManimGX and voiced locally by LFM2.5-Audio, optionally tied to the user's own project. Use whenever the user asks for an animation, an animated explainer, or an explainer video.
+description: Make a narrated explainer video (MP4) about a paper, method or concept, animated with ManimGX and voiced locally by LFM3-Audio, optionally tied to the user's own project. Use whenever the user asks for an animation, an animated explainer, or an explainer video.
 ---
 
 # Narrated explainer videos
@@ -12,8 +12,8 @@ and, when the user has a project the idea relates to, a closing part about how i
 
 Tools (see README.md for setup; if one is missing, tell the user how to install it):
 - `manimgx` (`uv tool install manimgx`; CLI, Manim CE API, `import manimgx as m`): `inspect` for storyboard and layout report, `render` for the MP4 and its `.srt`.
-- LFM2.5-Audio-1.5B GGUF for TTS and ASR, in `$LFM_AUDIO_CKPT` (default
-  `~/.lmstudio/models/LiquidAI/LFM2.5-Audio-1.5B-GGUF/`). `scripts/fetch_model.sh` downloads it.
+- LFM3-Audio-2B for TTS and ASR, on Hugging Face Transformers through `uv run` (the scripts declare
+  their own dependencies). `uv run <skill>/scripts/lfm_audio.py fetch` downloads the model (4 GB).
 - `ffmpeg`/`ffprobe`.
 - Helpers in this skill's `scripts/`: `lfm_audio.py` (TTS, ASR, word error rate), `make_narration.py`
   (each line spoken up to 3 times, the take whose transcript is closest wins), `lfm_voice.py`
@@ -29,7 +29,7 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
    the idea, the math one piece at a time, worked numeric examples, results, and then (if there is
    a project) "how this applies to <project>" with concrete steps, then a summary or questions.
    For the project part, use real names, files, numbers and known findings from the project.
-3. **Write `narration.py`**: `VOICE = "US male"` and `LINES = {key: text}`, one line per beat
+3. **Write `narration.py`**: `VOICE = "US male"` (or `"UK female"`, `"es male"`: a locale and male/female) and `LINES = {key: text}`, one line per beat
    (2–5 sentences). Spoken form, not screen form: "L L M", "G R P O", "two point six B",
    "zero point four three", no symbols, no CamelCase, no code identifiers. Wrap in `[brackets]`
    the words each animation should play on; brackets are stripped before speaking.
@@ -47,13 +47,11 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
    (or another installed sans), formulas with `m.MathTex`. Prefer diagrams, bars, dots, flows and
    transforms to walls of text; on-screen text is short and complements the narration rather than
    repeating it. Label toy simulations and illustrative shapes as such on screen.
-5. **Generate the voice**: `python3 <skill>/scripts/make_narration.py <dir>/narration.py`
-   (run in the background; about 10–20 s per line). Read `audio/report.json`; rewrite any line
+5. **Generate the voice**: `uv run <skill>/scripts/make_narration.py <dir>/narration.py`
+   (run in the background; about 1–2 min to load, then roughly real time per line). Read `audio/report.json`; rewrite any line
    flagged `<-- check` (word error rate > 0.15) in plainer spoken words and redo it with
    `make_narration.py <dir>/narration.py key1 key2`. Number-heavy lines get false flags (the transcript writes
-   "150" for "a hundred and fifty"), so read the transcript before redoing. If the runner aborts on one line
-   every time (Metal backtrace, no wav), rephrase that line: "GPT J, a six billion parameter model" crashed it,
-   "G P T J, a model with six billion parameters" did not.
+   "150" for "a hundred and fifty"), so read the transcript before redoing.
 6. **Inspect and fix layout**: `manimgx inspect <slug>.py` writes storyboard PNGs and a layout
    report (overlaps, text off screen). Look at every storyboard PNG, fix overlaps,
    crowding, tiny text and off-frame items, and inspect again until clean.

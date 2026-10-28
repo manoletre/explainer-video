@@ -1,19 +1,18 @@
-"""LFM2.5-Audio as a ManimGX voice: `class MyScene(m.Scene): voice = staticmethod(lfm_voice(script))`.
+"""LFM3-Audio as a ManimGX voice: `class MyScene(m.Scene): voice = staticmethod(lfm_voice(script))`.
 
 A line already generated (and ASR-checked) by make_narration.py is reused from the script's audio/ folder;
-any other text is spoken here, best of three takes by ASR word error rate.
+any other text is spoken by `uv run lfm_audio.py best` (manimgx's env has no torch), best of three takes by ASR
+word error rate.
 """
 import importlib.util
 import re
-import sys
+import subprocess
 import tempfile
 from pathlib import Path
 
-HERE = Path(__file__).parent
-sys.path.insert(0, str(HERE))
-import lfm_audio as L  # noqa: E402
+import manimgx as m
 
-import manimgx as m  # noqa: E402
+HERE = Path(__file__).parent
 
 
 def plain(line):
@@ -36,17 +35,9 @@ def lfm_voice(script_path):
     def speak(text):
         wav = clips.get(plain(text))
         if wav is None or not wav.exists():
-            best = None
-            out = Path(tempfile.mkdtemp())
-            for i in range(3):
-                take = L.tts(text, out / f"{i}.wav", mod.VOICE)
-                hyp = L.asr(take).split("=== GENERATED TEXT ===")[-1].strip()
-                err = L.wer(text, hyp)
-                if best is None or err < best[0]:
-                    best = (err, take)
-                if err <= 0.08:
-                    break
-            wav = best[1]
+            wav = Path(tempfile.mkdtemp()) / "line.wav"
+            subprocess.run(["uv", "run", "-q", str(HERE / "lfm_audio.py"), "best", plain(text), str(wav), mod.VOICE],
+                           check=True)
         return m.Speech(wav.read_bytes(), text=text)
 
     speak.__qualname__ = f"lfm_voice[{mod.VOICE}]"
