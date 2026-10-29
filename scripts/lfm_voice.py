@@ -1,18 +1,19 @@
 """LFM3-Audio as a ManimGX voice: `class MyScene(m.Scene): voice = staticmethod(lfm_voice(script))`.
 
 A line already generated (and ASR-checked) by make_narration.py is reused from the script's audio/ folder;
-any other text is spoken by `uv run lfm_audio.py best` (manimgx's env has no torch), best of three takes by ASR
-word error rate.
+any other text is spoken here, best of three takes by ASR word error rate.
 """
 import importlib.util
 import re
-import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-import manimgx as m
-
 HERE = Path(__file__).parent
+sys.path.insert(0, str(HERE))
+import lfm_audio as L  # noqa: E402
+
+import manimgx as m  # noqa: E402
 
 
 def plain(line):
@@ -36,8 +37,7 @@ def lfm_voice(script_path):
         wav = clips.get(plain(text))
         if wav is None or not wav.exists():
             wav = Path(tempfile.mkdtemp()) / "line.wav"
-            subprocess.run(["uv", "run", "-q", str(HERE / "lfm_audio.py"), "best", plain(text), str(wav), mod.VOICE],
-                           check=True)
+            L.best(plain(text), wav, mod.VOICE)
         return m.Speech(wav.read_bytes(), text=text)
 
     speak.__qualname__ = f"lfm_voice[{mod.VOICE}]"

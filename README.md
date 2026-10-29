@@ -3,7 +3,7 @@
 A [Claude Code](https://claude.com/claude-code) skill for narrated explainer videos.
 Ask Claude for "an animated explainer of this paper". It researches the source, writes
 a narration script, animates it with [ManimGX](https://pypi.org/project/manimgx/), and voices it
-locally with [LFM3-Audio](https://huggingface.co/LiquidAI/LFM3-Audio-2B). Every
+locally with [LFM3-Audio](https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF) on llama.cpp. Every
 animation is timed to the words that describe it. The result is an MP4 with subtitles plus a
 cheat sheet of the formulas and sources.
 
@@ -31,14 +31,16 @@ uv tool install manimgx
 ```
 
 ```bash
-uv run ~/.claude/skills/explainer-video/scripts/lfm_audio.py fetch
+~/.claude/skills/explainer-video/scripts/fetch_model.sh
 ```
 
 You also need `ffmpeg` and a LaTeX install for `MathTex` (for example `brew install ffmpeg` and
-MacTeX/BasicTeX on macOS), plus [uv](https://docs.astral.sh/uv/). The voice runs on Hugging Face
-Transformers: `uv run` sets up torch and transformers for the scripts, and `fetch` downloads the 4 GB
-model into the Hugging Face cache (otherwise it downloads on first use). It runs on the Apple GPU,
-CUDA or the CPU. On an M-series Mac it speaks about as fast as real time.
+MacTeX/BasicTeX on macOS). The script downloads the Q8_0 model (about 2.2 GB) and llama.cpp release
+`b11985` (LFM3-Audio needs `b11960` or newer) for macOS arm64/x64 or Linux x64/arm64 into
+`~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF/`. That's also where LM Studio puts it, so an existing
+LM Studio download gets reused. Set `LFM_AUDIO_CKPT` to use another folder, `LFM_LLAMA_BUILD` for
+another release, or `LFM_AUDIO_RUNNER` to a folder holding your own `llama-tts` and `llama-mtmd-cli`.
+On an M-series Mac a line of narration takes about 3.5 s to speak and 3.5 s to check.
 
 ## Use
 
@@ -52,14 +54,15 @@ layout inspection and render.
 ## What's inside
 
 - `SKILL.md`: the instructions Claude follows.
-- `scripts/lfm_audio.py`: TTS, ASR and word error rate with LFM3-Audio-2B on Transformers.
+- `scripts/lfm_audio.py`: TTS, ASR and word error rate on top of llama.cpp's `llama-tts` and `llama-mtmd-cli`.
 - `scripts/make_narration.py`: generates and checks every narration clip; writes `audio/report.json`.
 - `scripts/lfm_voice.py`: plugs those clips into a ManimGX scene as its `voice`.
+- `scripts/fetch_model.sh`: downloads the model and a llama.cpp release that runs it.
 - `examples/sec/`: a complete 11 minute video explaining *Self-Evolving Curriculum for LLM
   Reasoning* (Chen et al., 2025). Run it yourself:
 
   ```bash
-  cd ~/.claude/skills/explainer-video && uv run scripts/make_narration.py examples/sec/narration.py && manimgx render examples/sec/sec_explainer.py
+  cd ~/.claude/skills/explainer-video && python3 scripts/make_narration.py examples/sec/narration.py && manimgx render examples/sec/sec_explainer.py
   ```
 
 ## License

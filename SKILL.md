@@ -12,8 +12,9 @@ and, when the user has a project the idea relates to, a closing part about how i
 
 Tools (see README.md for setup; if one is missing, tell the user how to install it):
 - `manimgx` (`uv tool install manimgx`; CLI, Manim CE API, `import manimgx as m`): `inspect` for storyboard and layout report, `render` for the MP4 and its `.srt`.
-- LFM3-Audio-2B for TTS and ASR, on Hugging Face Transformers through `uv run` (the scripts declare
-  their own dependencies). `uv run <skill>/scripts/lfm_audio.py fetch` downloads the model (4 GB).
+- LFM3-Audio-2B GGUF for TTS and ASR, in `$LFM_AUDIO_CKPT` (default
+  `~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF/`), run with llama.cpp's `llama-tts` and
+  `llama-mtmd-cli` from `runner/b11985/` there. `scripts/fetch_model.sh` downloads both.
 - `ffmpeg`/`ffprobe`.
 - Helpers in this skill's `scripts/`: `lfm_audio.py` (TTS, ASR, word error rate), `make_narration.py`
   (each line spoken up to 3 times, the take whose transcript is closest wins), `lfm_voice.py`
@@ -47,8 +48,8 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
    (or another installed sans), formulas with `m.MathTex`. Prefer diagrams, bars, dots, flows and
    transforms to walls of text; on-screen text is short and complements the narration rather than
    repeating it. Label toy simulations and illustrative shapes as such on screen.
-5. **Generate the voice**: `uv run <skill>/scripts/make_narration.py <dir>/narration.py`
-   (run in the background; about 1–2 min to load, then roughly real time per line). Read `audio/report.json`; rewrite any line
+5. **Generate the voice**: `python3 <skill>/scripts/make_narration.py <dir>/narration.py`
+   (run in the background; about 7 s per take, up to 3 takes per line). Read `audio/report.json`; rewrite any line
    flagged `<-- check` (word error rate > 0.15) in plainer spoken words and redo it with
    `make_narration.py <dir>/narration.py key1 key2`. Number-heavy lines get false flags (the transcript writes
    "150" for "a hundred and fifty"), so read the transcript before redoing.

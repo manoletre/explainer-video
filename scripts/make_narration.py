@@ -1,14 +1,10 @@
-# /// script
-# requires-python = ">=3.10"
-# dependencies = ["transformers>=5.20.2", "torch", "accelerate", "librosa", "soundfile"]
-# ///
 """Generate narration clips with LFM3-Audio and check each one by transcribing it back.
 
 Each line is synthesized up to TRIES times; the take whose ASR transcript is closest to the script wins.
 Writes audio/<key>.wav and audio/durations.json.
 
-    uv run make_narration.py path/to/narration.py           # all missing clips; written to path/to/audio/
-    uv run make_narration.py path/to/narration.py sb2 dr6   # redo these
+    python3 make_narration.py path/to/narration.py           # all missing clips; written to path/to/audio/
+    python3 make_narration.py path/to/narration.py sb2 dr6   # redo these
 """
 import importlib.util
 import json
