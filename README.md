@@ -1,5 +1,9 @@
 # explainer-video
 
+<p align="center">
+  <img src="assets/logo.png" alt="Explainer Video logo: a white integral sign beside a yellow play button" width="240">
+</p>
+
 A [Claude Code](https://claude.com/claude-code) skill for narrated explainer videos.
 Ask Claude for "an animated explainer of this paper". It researches the source, writes
 a narration script, animates it with [ManimGX](https://pypi.org/project/manimgx/), and voices it
