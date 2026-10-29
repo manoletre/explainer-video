@@ -1,0 +1,18 @@
+{
+ "text": "Six search algorithms come up again and again in interviews. Linear, binary, jump, exponential, interpolation, and hash table lookup. By the end of this video, you'll know how each one works, what it costs, and when to pick it.",
+ "voice": "lfm_voice.lfm_voice[US male]#23663614c70944e2((), (), (), ())",
+ "suffix": ".wav",
+ "audio": "aba2ac08ba858a7d",
+ "edit": {
+  "start": 0.0,
+  "end": null,
+  "speed": 1.0,
+  "loop": null,
+  "gain": 0.0,
+  "fade_in": 0.0,
+  "fade_out": 0.0,
+  "pan": 0.0,
+  "duck": 0.0
+ },
+ "words": []
+}
