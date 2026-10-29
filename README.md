@@ -23,7 +23,9 @@ Source and cheat sheet in [`examples/search-algorithms/`](examples/search-algori
 
 ### More examples
 
-Both end with a section on how the idea applies to a chess-playing LLM project.
+Both end with a section on how the idea applies to my chess-playing LLM project,
+[Teaching chess to small language models](https://manoletre.com/chess), which fine-tunes small
+Liquid models to solve chess puzzles and play games.
 
 | [![DAgger explainer](docs/dagger.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DAggerExplainer.mp4) | [![SEC explainer](docs/sec.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SECExplainer.mp4) |
 |---|---|
