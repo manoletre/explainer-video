@@ -18,8 +18,26 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
 - `ffmpeg`/`ffprobe`.
 - Helpers in this skill's `scripts/`: `lfm_audio.py` (TTS, ASR, word error rate), `make_narration.py`
   (each line spoken up to 3 times, the take whose transcript is closest wins), `lfm_voice.py`
-  (the scene's `voice`, reuses those clips). `examples/sec/sec_explainer.py` + `examples/sec/narration.py`
-  are a full video: copy its helpers (`T`, `M`, `card`, `header`, `beat`, `clear_all`) and idioms.
+  (the scene's `voice`, reuses those clips), `stage.py` (a laser `Pointer` the narration can move, and
+  `say_synced`, which flags speech over an empty or frozen screen). `examples/sec/sec_explainer.py` +
+  `examples/sec/narration.py` are a full video: copy its helpers (`T`, `M`, `card`, `header`, `beat`,
+  `clear_all`) and idioms.
+
+## The screen leads the voice
+
+The viewer must always be able to see what the narrator is talking about. Two failures to avoid:
+- **Dead air**: talking over an empty screen. It happens after `header()` or a fade-out, when the first
+  `[bracket]` comes late in the line ("Math piece three, from the appendix. Suppose [...]"): every word
+  before it plays over black. A beat that starts on a cleared screen brackets its opening words, so
+  something appears as the voice starts.
+- **Frozen screen**: talking for more than about 4 seconds while nothing moves, so the viewer loses
+  which part of the picture the words are about. Every sentence gets an animation, and when the words
+  refer to something already on screen, point at it: `self.ptr.at(x)` (flies there and pulses),
+  `self.ptr.sweep(x)` (underlines it as it is read), `self.ptr.circle(x)`, `self.ptr.hide()`.
+  `m.Indicate(x)` works too.
+
+Silence is fine: after a line, a pause that lets a point land (an `Indicate` or a pointer pulse, then a
+second or two of nothing) is good pacing. The rule is about speech, not about silence.
 
 ## Steps
 
@@ -41,9 +59,13 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
    class XExplainer(m.Scene):
        voice = staticmethod(lfm_voice(HERE / "narration.py"))
    ```
-   Each beat is `self.say(N[key], *anims)` with exactly one animation per bracketed span
-   (wrap several in `m.AnimationGroup`). Sections start with `header("3 · Title")`, which clears
-   the screen. Style: background `#111111`, text `#FFFFFF`, dim `#9A9A9A`, accent `#FF8700`,
+   In `construct()`, create `self.ptr = Pointer()` (from `stage`). Each beat is
+   `say_synced(self, key, N[key], *anims)` (the example's `beat`) with exactly one animation per
+   bracketed span (wrap several in `m.AnimationGroup`); a pointer gesture is an animation like any
+   other, so "the [denominator] is the spread" plays `self.ptr.at(frac[2])` on "denominator".
+   Sections start with `header("3 · Title")`, which clears the screen (and hides the pointer) and
+   marks the title with `chrome()` so it doesn't count as content. For an emphasis pause, use
+   `hold(self, m.Indicate(x))` from `stage`. Style: background `#111111`, text `#FFFFFF`, dim `#9A9A9A`, accent `#FF8700`,
    good `#5FD787`, bad `#FF5F5F`, blue `#5FAFFF`, panels `#1C1C1C`, font "Avenir Next"
    (or another installed sans), formulas with `m.MathTex`. Prefer diagrams, bars, dots, flows and
    transforms to walls of text; on-screen text is short and complements the narration rather than
@@ -53,9 +75,15 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
    flagged `<-- check` (word error rate > 0.15) in plainer spoken words and redo it with
    `make_narration.py <dir>/narration.py key1 key2`. Number-heavy lines get false flags (the transcript writes
    "150" for "a hundred and fifty"), so read the transcript before redoing.
-6. **Inspect and fix layout**: `manimgx inspect <slug>.py` writes storyboard PNGs and a layout
-   report (overlaps, text off screen). Look at every storyboard PNG, fix overlaps,
-   crowding, tiny text and off-frame items, and inspect again until clean.
+6. **Inspect and fix layout and sync**: `manimgx inspect <slug>.py` writes storyboard PNGs and a layout
+   report (overlaps, text off screen), and `say_synced` writes `sync_report.txt` beside the scene. Look
+   at every storyboard PNG, fix overlaps, crowding, tiny text and off-frame items. Fix every
+   `sync_report.txt` entry: for **dead air**, move the first bracket onto the opening words (or show
+   the picture before the line starts); for **still**, add a bracket on the words it quotes, with a
+   pointer gesture or the reveal of what they describe. Moving or adding brackets doesn't change
+   what is spoken, so the clips don't need redoing. Inspect again until both reports are clean
+   (a layout flag on `self.ptr` while it is flying between targets is fine; one where it rests is not:
+   point at another `edge`).
    `manimgx inspect <slug>.py -t 12.5,end` checks particular moments.
 7. **Render**: `manimgx render <slug>.py` (background). Check the result: duration with
    `ffprobe`, a few frames (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
@@ -68,5 +96,7 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
 - Every claim either comes from the source, is computed on screen, or is marked as an assumption.
 - One concept per beat, built up visually; transforms connect a step to the next.
 - Worked examples with real numbers (as in the SEC advantage example: 2 of 8 correct → mean 0.25 → std 0.433 → ±Â).
-- No dead air and no rushed beats: an animation can't outrun its words, so long animations need long spans.
+- No speech over an empty screen and no more than about 4 s of speech with nothing moving
+  (`sync_report.txt` is empty); deliberate silent pauses for emphasis are fine.
+- No rushed beats: an animation can't outrun its words, so long animations need long spans.
 - The project section names the real files, scores and constraints, and gives an ordered plan.

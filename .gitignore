@@ -5,3 +5,5 @@ __pycache__/
 media/
 .DS_Store
 voice/
+sync_report.txt
+*.storyboard*.png

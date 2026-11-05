@@ -15,25 +15,13 @@ Narration runs fully offline. The skill speaks each line up to three times, tran
 take back with the same model, and keeps the take closest to the script. Lines that still
 come out wrong get flagged for a rewrite.
 
-## Example
+## Examples
 
-[![Search algorithms explainer](docs/search.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4)
-
-**[Search algorithms, compared](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4)** (7:58).
-Linear, binary, jump, exponential, interpolation and hash table lookup: how each one works,
-its best, average and worst case, its space, and when to pick it. It was made from a one-line
-request ("create a video about all of these search algorithms that compares them") for interview prep.
-Source and cheat sheet in [`examples/search-algorithms/`](examples/search-algorithms/).
-
-### More examples
-
-Both end with a section on how the idea applies to my chess-playing LLM project,
-[Teaching chess to small language models](https://manoletre.com/chess), which fine-tunes small
-Liquid models to solve chess puzzles and play games.
-
-| [![DAgger explainer](docs/dagger.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DAggerExplainer.mp4) | [![SEC explainer](docs/sec.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SECExplainer.mp4) |
+| [![Search algorithms explainer](docs/search.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4) | [![Data structures explainer](docs/data-structures.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DataStructures.mp4) |
 |---|---|
-| **[DAgger: imitation learning that doesn't drift](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DAggerExplainer.mp4)** (7:33)<br>Ross, Gordon & Bagnell, AISTATS 2011 | **[Self-Evolving Curriculum for LLM reasoning](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SECExplainer.mp4)** (11:02)<br>Chen et al., 2025. Source in [`examples/sec/`](examples/sec/) |
+| **[Search algorithms, compared](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4)** (7:58)<br>Linear, binary, jump, exponential, interpolation and hash table lookup: how each one works, what it costs, and when to pick it. Source and cheat sheet in [`examples/search-algorithms/`](examples/search-algorithms/). | **[Must-know data structures](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DataStructures.mp4)** (10:00)<br>Arrays, linked lists, stacks and queues, hash tables, binary search trees, heaps, graphs and tries: how each is laid out, what it costs, and how to choose. Source and cheat sheet in [`examples/data-structures/`](examples/data-structures/). |
+
+Both were made from a one-line request, for interview prep.
 
 ## Install
 
@@ -153,8 +141,10 @@ The MP4 and its `.srt` subtitles are written next to the scene file.
 - `scripts/lfm_audio.py`: TTS, ASR and word error rate on top of llama.cpp's `llama-tts` and `llama-mtmd-cli`.
 - `scripts/make_narration.py`: generates and checks every narration clip; writes `audio/report.json`.
 - `scripts/lfm_voice.py`: plugs those clips into a ManimGX scene as its `voice`.
+- `scripts/stage.py`: a laser pointer the narration can move, and a check that flags speech over an empty or frozen screen.
 - `scripts/fetch_model.sh`: downloads the model and a llama.cpp release that runs it.
 - `examples/search-algorithms/`: the 8 minute search algorithms video: scene, narration and cheat sheet.
+- `examples/data-structures/`: the 10 minute data structures video: scene, narration and cheat sheet.
 - `examples/sec/`: an 11 minute video explaining *Self-Evolving Curriculum for LLM Reasoning*
   (Chen et al., 2025).
 

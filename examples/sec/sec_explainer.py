@@ -15,6 +15,7 @@ import manimgx as m
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent.parent / "scripts"))
 from lfm_voice import load_script, lfm_voice  # noqa: E402
+from stage import Pointer, chrome, say_synced  # noqa: E402
 
 N = load_script(HERE / "narration.py").LINES
 
@@ -115,6 +116,7 @@ class SECExplainer(m.Scene):
     voice = staticmethod(lfm_voice(HERE / "narration.py"))
 
     def construct(self) -> None:
+        self.ptr = Pointer()
         self.intro()
         self.why_order()
         self.bandits()
@@ -131,15 +133,16 @@ class SECExplainer(m.Scene):
 
     # ---------- scene helpers ----------
     def beat(self, key, *anims):
-        self.say(N[key], *anims)
+        say_synced(self, key, N[key], *anims)
 
     def clear_all(self):
-        if self.mobjects:
-            self.play(*[m.FadeOut(x) for x in self.mobjects], run_time=0.6)
+        rest = [x for x in self.mobjects if x is not self.ptr]
+        if rest:
+            self.play(*[m.FadeOut(x) for x in rest], self.ptr.hide(), run_time=0.6)
 
     def header(self, text):
         self.clear_all()
-        h = T(text, 34).to_edge(m.UP, buff=0.35)
+        h = chrome(T(text, 34).to_edge(m.UP, buff=0.35))
         self.play(m.FadeIn(h, shift=0.2 * m.DOWN), run_time=0.6)
         return h
 
