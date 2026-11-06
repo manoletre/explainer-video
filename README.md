@@ -29,6 +29,24 @@ You need macOS (Apple silicon or Intel) or Linux (x64 or arm64), [Claude Code](h
 Python 3.9 or newer, and about 3 GB of free disk space. Setup takes about 10 minutes, most of it
 downloading the voice model.
 
+### Hardware
+
+| | Minimum | Comfortable |
+|---|---|---|
+| CPU | 4 cores (x64 with AVX2, or arm64) | 8 cores or Apple silicon |
+| RAM | 6 GB (4 GB with the `Q4_K_M` voice model) | 16 GB |
+| Disk | 4 GB free | 10 GB free |
+| GPU | none: Mesa's lavapipe draws on the CPU, at 720p30 or less | any GPU with Metal or Vulkan, for 1080p60 |
+
+The voice runs on the CPU everywhere (about 8 s per take on 8 cores). Rendering is what needs a GPU:
+[ManimGX](https://pypi.org/project/manimgx/) draws every frame through wgpu (Metal on macOS, Vulkan on
+Linux). On a Linux box with no GPU driver (most cloud VMs and containers) it fails with `no GPU adapter`
+until you install Mesa's Vulkan drivers (`sudo apt install mesa-vulkan-drivers`); it then draws on the
+CPU, about 0.15 s per changed frame at 1280x720 and 0.3 s at 1920x1080 on 8 x64 cores. That is fine
+at 720p30, but the scene's default 1920x1080 at 60 fps renders about 20 times slower than real time:
+hours for an 8 minute video. `scripts/render.py` measures this on your machine and picks the format
+that finishes in time; `scripts/hardware.py` tells you which case you are in and what to fix.
+
 ### 1. Install ffmpeg and uv
 
 [uv](https://docs.astral.sh/uv/) installs ManimGX; ffmpeg muxes the audio and video.
@@ -82,7 +100,17 @@ llama.cpp release (`b11985`) for your platform into `~/.lmstudio/models/LiquidAI
 That's also where LM Studio keeps the model, so an existing LM Studio download is reused. Running the
 script again skips whatever is already there.
 
-### 5. Check the voice
+### 5. Check the hardware
+
+```bash
+python3 ~/.claude/skills/explainer-video/scripts/hardware.py
+```
+
+It prints the CPU, RAM, disk and the adapter ManimGX will draw with, then a `FIX` line for anything
+that would stop a video (on a Linux VM with no GPU: `sudo apt install mesa-vulkan-drivers`) and a
+`NOTE` for what to change on this machine.
+
+### 6. Check the voice
 
 ```bash
 cd ~/.claude/skills/explainer-video && python3 -c "import sys; sys.path.insert(0, 'scripts'); import lfm_audio as L; L.tts('Hello from explainer video.', '/tmp/hello.wav'); print(L.asr('/tmp/hello.wav'))"
@@ -91,7 +119,7 @@ cd ~/.claude/skills/explainer-video && python3 -c "import sys; sys.path.insert(0
 It speaks the sentence into `/tmp/hello.wav`, transcribes it back, and prints
 `Hello from Explainer Video.` (about 7 s on an M-series Mac). Play the file to hear the voice.
 
-### 6. Start Claude Code
+### 7. Start Claude Code
 
 Open a new Claude Code session (skills load at startup) and ask for a video, or type `/explainer-video`.
 
@@ -111,6 +139,7 @@ All optional, set as environment variables before running Claude Code or the scr
 | `LFM_LLAMA_BUILD` | `b11985` | llama.cpp release to download and run (LFM3-Audio needs `b11960` or newer) |
 | `LFM_AUDIO_RUNNER` | `$LFM_AUDIO_CKPT/runner/$LFM_LLAMA_BUILD` | A folder with your own `llama-tts` and `llama-mtmd-cli` |
 | `LFM_AUDIO_QUANT` | `Q8_0` | Model quantization to download and use |
+| `LFM_LLAMA_FLAVOR` | (CPU build) | `vulkan` fetches and uses llama.cpp's Vulkan build on Linux, to voice on a GPU |
 
 On an M-series Mac a line of narration takes about 3.5 s to speak and 3.5 s to check.
 
@@ -130,8 +159,11 @@ cd ~/.claude/skills/explainer-video && python3 scripts/make_narration.py example
 ```
 
 ```bash
-cd ~/.claude/skills/explainer-video && manimgx render examples/search-algorithms/search_algorithms.py
+cd ~/.claude/skills/explainer-video && python3 scripts/render.py examples/search-algorithms/search_algorithms.py
 ```
+
+`render.py` prints its plan (for example `plan: 1280x720 at 30 fps, about 25 min` on a CPU-only
+VM), then progress every 20 s. On a machine with a GPU, `manimgx render <scene>.py` works as well.
 
 The MP4 and its `.srt` subtitles are written next to the scene file.
 
@@ -143,6 +175,8 @@ The MP4 and its `.srt` subtitles are written next to the scene file.
 - `scripts/lfm_voice.py`: plugs those clips into a ManimGX scene as its `voice`.
 - `scripts/stage.py`: a laser pointer the narration can move, and a check that flags speech over an empty or frozen screen.
 - `scripts/fetch_model.sh`: downloads the model and a llama.cpp release that runs it.
+- `scripts/hardware.py`: what this machine can render on (GPU or CPU), and what to fix first.
+- `scripts/render.py`: renders at the best resolution and frame rate that finish within a time budget, with progress.
 - `examples/search-algorithms/`: the 8 minute search algorithms video: scene, narration and cheat sheet.
 - `examples/data-structures/`: the 10 minute data structures video: scene, narration and cheat sheet.
 - `examples/sec/`: an 11 minute video explaining *Self-Evolving Curriculum for LLM Reasoning*
