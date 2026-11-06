@@ -16,6 +16,8 @@ Tools (see README.md for setup; if one is missing, tell the user how to install 
   `~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF/`), run with llama.cpp's `llama-tts` and
   `llama-mtmd-cli` from `runner/b11985/` there. `scripts/fetch_model.sh` downloads both.
 - `ffmpeg`/`ffprobe`.
+- `scripts/hardware.py` (what this machine can do: GPU or CPU rendering, RAM, cores, missing tools) and
+  `scripts/render.py` (renders at the best format that finishes in time, with progress).
 - Helpers in this skill's `scripts/`: `lfm_audio.py` (TTS, ASR, word error rate), `make_narration.py`
   (each line spoken up to 3 times, the take whose transcript is closest wins), `lfm_voice.py`
   (the scene's `voice`, reuses those clips), `stage.py` (a laser `Pointer` the narration can move, and
@@ -38,6 +40,25 @@ The viewer must always be able to see what the narrator is talking about. Two fa
 
 Silence is fine: after a line, a pause that lets a point land (an `Indicate` or a pointer pulse, then a
 second or two of nothing) is good pacing. The rule is about speech, not about silence.
+
+## Hardware
+
+Run `python3 <skill>/scripts/hardware.py` before anything else, and act on it:
+- Every `FIX` line blocks the video: do it first (install a tool, fetch the model, or on Linux without
+  a GPU driver `sudo apt install mesa-vulkan-drivers`, whose lavapipe lets ManimGX draw on the CPU).
+- `renders on the GPU`: the scene's default 1920x1080 at 60 fps is fine.
+- `renders on the CPU` (a cloud VM, a container, a laptop without a Vulkan driver): every changed frame
+  is drawn by the CPU, 0.15 s at 720p and 0.3 s at 1080p on 8 cores, so a plain `manimgx render` of an
+  8 minute video at 1080p60 takes hours and prints nothing while it runs. Always render with
+  `scripts/render.py`, never with a bare `manimgx render`, and keep the scene's own config at its
+  defaults (`render.py` sets the format). Plan the video for the machine: 6–8 minutes, not 12; hold a
+  finished picture with `self.wait` rather than keeping things moving (held frames cost nothing);
+  avoid long `run_time`s on full-screen transforms and updaters that run for a whole line.
+- Fewer than 6 GB of RAM: `LFM_AUDIO_QUANT=Q4_K_M scripts/fetch_model.sh` and set `LFM_AUDIO_QUANT=Q4_K_M`
+  for the voice scripts. Few cores: narration is slower (about 8 s per take on 8 cores); keep it in the
+  background and do the scene meanwhile.
+
+Narration (llama.cpp) runs fine on any of these; rendering is what depends on the GPU.
 
 ## Steps
 
@@ -85,7 +106,13 @@ second or two of nothing) is good pacing. The rule is about speech, not about si
    (a layout flag on `self.ptr` while it is flying between targets is fine; one where it rests is not:
    point at another `edge`).
    `manimgx inspect <slug>.py -t 12.5,end` checks particular moments.
-7. **Render**: `manimgx render <slug>.py` (background). Check the result: duration with
+7. **Render**: `python3 <skill>/scripts/render.py <slug>.py` (background). It counts the frames that
+   change, times the scene's own frames on this machine at each format, picks the best one that
+   finishes within `--budget` minutes (default 45: 1080p60 on a GPU, usually 720p30 on a CPU), says so,
+   and renders with `manimgx render`'s machinery, printing progress and an ETA every 20 s. Read its
+   plan line and its progress; if the estimate is far longer than the time you have, lower `--budget`
+   rather than waiting. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
+   user the format it chose. Check the result: duration with
    `ffprobe`, a few frames (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
 8. **Deliver** the MP4 plus the cheat sheet, with the length and a one-paragraph summary of the
    argument. Keep files in `explainers/<slug>/` inside the project (`audio/` holds the clips).
