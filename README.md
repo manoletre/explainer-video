@@ -47,6 +47,9 @@ at 720p30, but the scene's default 1920x1080 at 60 fps renders about 20 times sl
 hours for an 8 minute video. `scripts/render.py` measures this on your machine and picks the format
 that finishes in time; `scripts/hardware.py` tells you which case you are in and what to fix.
 
+For example, the 8 minute awordaday explainer on an 8 vCPU cloud VM with no GPU: 1920x1080 at 60 fps
+would take over 2 hours; `render.py` picked 1280x720 at 24 fps (estimate 37 minutes), which took 40.
+
 ### 1. Install ffmpeg and uv
 
 [uv](https://docs.astral.sh/uv/) installs ManimGX; ffmpeg muxes the audio and video.

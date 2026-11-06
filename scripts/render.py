@@ -55,12 +55,14 @@ def _take(file, name, w, h, fps, every=0):
     from manimgx.rendering import film
 
     sent = [0, 0]  # changing frames, frames drawn
+    starts = []
     original = film.Film._send
 
     def sending(self):
         if self._pending is None:
             return original(self)
         sent[0] += 1
+        starts.append(self._first)
         if every and (sent[0] - 1) % every == 0:
             sent[1] += 1
             return original(self)
@@ -74,7 +76,7 @@ def _take(file, name, w, h, fps, every=0):
                        preset="veryfast")
         wall = time.perf_counter() - start
     return {"seconds": float(made.clock), "frames": f.frame_count, "changing": sent[0], "drawn": sent[1],
-            "wall": wall}
+            "wall": wall, "starts": starts if not every else []}
 
 
 def count(file, name, fps):
@@ -132,7 +134,8 @@ def plan(file, name, budget_min, quiet=False):
             break
     if chosen is None:
         w, h, fps = ladder[-1]
-        chosen = (w, h, fps, counts[fps]["changing"] * (spf[(w, h)] or 0) * OVERHEAD / 60)
+        chosen = (w, h, fps, counts[fps]["changing"] * (spf[(w, h)] or 0) * OVERHEAD / 60
+                 )
         say(f"nothing fits {budget_min} min; using the smallest format. Split the video into several scenes "
             "or raise --budget.")
     c = counts[chosen[2]]
@@ -140,32 +143,35 @@ def plan(file, name, budget_min, quiet=False):
     return chosen, c
 
 
-def render(file, name, w, h, fps, preset, crf, seconds=None):
-    """`manimgx render`, with a progress line every 20 s whether or not stdout is a terminal."""
+def _progress(total, lo=0, hi=None, out=None, every=20):
+    """Patch Film._send to report the frames done, on stdout (or into the file out) every `every` s."""
+    from manimgx.rendering import film
+    original = film.Film._send
+    hi = total if hi is None else hi
+    start, last = time.perf_counter(), [0.0]
+
+    def sending(self):
+        now = time.perf_counter() - start
+        if self._pending is not None and now - last[0] >= every:
+            last[0] = now
+            done = min(max(self._first - lo, 0), hi - lo)
+            if out:
+                Path(out).write_text(str(done))
+            else:
+                frac = done / max(hi - lo, 1)
+                eta = f", ~{(now / frac - now) / 60:.0f} min left" if frac > 0.02 else ""
+                print(f"render: {100 * frac:.0f}%, {now / 60:.1f} min in{eta}", flush=True)
+        return original(self)
+
+    film.Film._send = sending
+
+
+def render(file, name, w, h, fps, preset, crf, frames):
+    """`manimgx render` (video, storyboard, layout report, .srt), with progress every 20 s."""
     from manimgx.cli import export
     from manimgx.cli.scenes import Size
 
-    original = export.take
-    start, last = time.perf_counter(), [0.0]
-
-    def take(kind, look, *, plays=None, **kw):
-        def hook(made, play, did):
-            now = time.perf_counter() - start
-            if now - last[0] >= 20:
-                last[0] = now
-                t = float(play.end)
-                line = f"render: {t:.0f} s of scene"
-                if seconds:
-                    frac = min(t / seconds, 1)
-                    eta = now / frac - now if frac > 0.02 else None
-                    line += f" / {seconds:.0f} s ({100 * frac:.0f}%)"
-                    line += f", {now / 60:.1f} min in" + (f", ~{eta / 60:.0f} min left" if eta else "")
-                print(line, flush=True)
-            if plays is not None:
-                plays(made, play, did)
-        return original(kind, look, plays=hook, **kw)
-
-    export.take = take
+    _progress(frames)
     print(f"rendering {Path(file).name} at {w}x{h}, {fps} fps, preset {preset}", flush=True)
     export.render(Path(file), name, output=None, resolution=Size(w, h), fps=fps, preset=preset, crf=crf)
 
@@ -194,15 +200,14 @@ def main():
     file = Path(args.file).resolve()
     if args.resolution:
         w, h = map(int, args.resolution.lower().split("x"))
-        fps, seconds = args.fps or 30, None
+        fps = args.fps or 30
+        c = _child("--_count", str(file), args.scene or "", str(fps))
     else:
         (w, h, fps, _), c = plan(file, args.scene, args.budget)
-        seconds = c["seconds"]
         if args.plan:
             return
     preset = args.preset or ("medium" if (w, h, fps) == GPU_LADDER[0] else "veryfast")
-    render(file, args.scene, w, h, fps, preset, args.crf, seconds)
-
+    render(file, args.scene, w, h, fps, preset, args.crf, c["frames"])
 
 if __name__ == "__main__":
     main()
