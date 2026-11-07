@@ -70,10 +70,27 @@ def _ram_gb():
         out = _run(["sysctl", "-n", "hw.memsize"])[1].strip()
         return round(int(out) / 2**30, 1) if out.isdigit() else None
     try:
-        kb = int(re.search(r"MemTotal:\s*(\d+)", Path("/proc/meminfo").read_text())[1])
-        return round(kb / 2**20, 1)
+        total = int(re.search(r"MemTotal:\s*(\d+)", Path("/proc/meminfo").read_text())[1]) * 1024
     except (OSError, TypeError):
         return None
+    # a container sees the host's MemTotal but is held to its cgroup's limit (v2, then v1)
+    for limit in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            text = Path(limit).read_text().strip()
+        except OSError:
+            continue
+        if text.isdigit():
+            total = min(total, int(text))
+        break
+    return round(total / 2**30, 1)
+
+
+def _free_gb(path):
+    """Free space where path is, or would be: at its nearest existing parent."""
+    path = Path(path).expanduser().resolve()
+    while not path.exists() and path != path.parent:
+        path = path.parent
+    return round(shutil.disk_usage(path).free / 2**30, 1)
 
 
 def gpu():
@@ -92,18 +109,19 @@ def gpu():
 def profile(where="."):
     cpu = _cpu()
     g = gpu()
-    usage = shutil.disk_usage(Path(where).resolve())
     return {
         "os": platform.system(), "arch": platform.machine(),
         "apple_silicon": sys.platform == "darwin" and platform.machine() == "arm64",
-        "cpu": cpu, "ram_gb": _ram_gb(), "free_disk_gb": round(usage.free / 2**30, 1),
+        "cpu": cpu, "ram_gb": _ram_gb(), "free_disk_gb": min(_free_gb(where), _free_gb(CKPT)),
         "gpu": g,
         "render": "gpu" if g.get("device_type") in GPU_TYPES else "cpu" if g.get("device_type") == "Cpu" else "none",
         "tools": {
             "ffmpeg": bool(shutil.which("ffmpeg")), "manimgx": manimgx_python() is not None,
             "latex": bool(shutil.which("latex") or shutil.which("pdflatex")),
             "lfm_model": (CKPT / f"LFM3-Audio-2B-{QUANT}.gguf").exists(),
+            "lfm_projector": (CKPT / "mmproj-LFM3-Audio-2B-Q8_0.gguf").exists(),
             "llama_tts": (RUNNER / "llama-tts").exists(),
+            "llama_mtmd": (RUNNER / "llama-mtmd-cli").exists(),
         },
     }
 
@@ -116,7 +134,7 @@ def advice(p):
         fix.append("Install ManimGX: uv tool install manimgx")
     if not t["ffmpeg"]:
         fix.append("Install ffmpeg (brew install ffmpeg / sudo apt install ffmpeg)")
-    if not (t["lfm_model"] and t["llama_tts"]):
+    if not all(t[k] for k in ("lfm_model", "lfm_projector", "llama_tts", "llama_mtmd")):
         fix.append("Fetch the voice: scripts/fetch_model.sh (about 2.2 GB)")
     if p["render"] == "none" and t["manimgx"]:
         if p["os"] == "Linux":
