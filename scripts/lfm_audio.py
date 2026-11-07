@@ -10,7 +10,9 @@ import subprocess
 from pathlib import Path
 
 CKPT = Path(os.environ.get("LFM_AUDIO_CKPT", Path.home() / ".lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF"))
-BIN = Path(os.environ.get("LFM_AUDIO_RUNNER", CKPT / f"runner/{os.environ.get('LFM_LLAMA_BUILD', 'b11985')}"))
+_FLAVOR = os.environ.get("LFM_LLAMA_FLAVOR", "")
+BIN = Path(os.environ.get("LFM_AUDIO_RUNNER", CKPT / ("runner/" + os.environ.get("LFM_LLAMA_BUILD", "b11985")
+                                                      + (f"-{_FLAVOR}" if _FLAVOR else ""))))
 QUANT = os.environ.get("LFM_AUDIO_QUANT", "Q8_0")
 
 # VOICE strings in narration.py, e.g. "US male", "UK female", "es male": a locale and a gender
