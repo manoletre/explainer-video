@@ -2,7 +2,7 @@
 
     python3 scripts/render.py <dir>/<slug>.py                 # plan, then render
     python3 scripts/render.py <dir>/<slug>.py --plan          # only the plan
-    python3 scripts/render.py <dir>/<slug>.py --budget 30     # minutes the render may take (default 45)
+    python3 scripts/render.py <dir>/<slug>.py --budget 30     # minutes the render may take (default 10)
     python3 scripts/render.py <dir>/<slug>.py -r 1280x720 --fps 30   # force a format, still with progress
 
 A plain `manimgx render` uses the scene's format, 1920x1080 at 60 fps, and prints nothing until it
@@ -24,6 +24,7 @@ without re-encoding, with the scene's sound and subtitles added and its storyboa
 """
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -184,6 +185,7 @@ def plan(file, name, budget_min, quiet=False):
     counts = {}
     spf = {}
     chosen = None
+    tried = []
     for w, h, fps in ladder:
         if fps not in counts:
             counts[fps] = _child("--_count", str(file), name or "", str(fps))
@@ -194,6 +196,7 @@ def plan(file, name, budget_min, quiet=False):
         s = spf[(w, h)] or 0.0
         est = c["changing"] * s * OVERHEAD / 60 / n
         say(f"  {w}x{h}@{fps}: {c['changing']} of {c['frames']} frames change, {s:.3f} s each -> ~{est:.0f} min")
+        tried.append((w, h, fps, est))
         if chosen is None and est <= budget_min:
             chosen = (w, h, fps, est)
             break
@@ -204,6 +207,12 @@ def plan(file, name, budget_min, quiet=False):
             "or raise --budget.")
     c = counts[chosen[2]]
     say(f"plan: {chosen[0]}x{chosen[1]} at {chosen[2]} fps, about {chosen[3]:.0f} min for {c['seconds']:.0f} s of video")
+    if not on_gpu:
+        say("limits: no GPU here, so every frame is drawn on the CPU. Better quality costs time:")
+        for w, h, fps, est in tried:
+            if (w, h, fps) != chosen[:3]:
+                say(f"  {w}x{h} at {fps} fps: about {est:.0f} min (--budget {math.ceil(est) + 1})")
+        say("  on any GPU (Metal or Vulkan) 1920x1080 at 60 fps takes a few minutes: render there instead")
     return chosen, c, on_gpu
 
 
@@ -322,7 +331,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("file")
     ap.add_argument("scene", nargs="?")
-    ap.add_argument("--budget", type=float, default=45, help="minutes the render may take (default 45)")
+    ap.add_argument("--budget", type=float, default=10, help="minutes the render may take (default 10)")
     ap.add_argument("--plan", action="store_true", help="only estimate and print the plan")
     ap.add_argument("-r", "--resolution", help="WxH: skip the plan and render at this size")
     ap.add_argument("--fps", type=int)

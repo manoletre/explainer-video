@@ -53,8 +53,13 @@ thread (`LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`), which draws every frame right b
 slower per process, and renders the video as one segment per core in parallel, split so each draws as
 many changing frames, then joins them without re-encoding and adds the sound and subtitles.
 
-For example, the 8 minute awordaday explainer on an 8 vCPU cloud VM with no GPU: 1920x1080 at 60 fps
-would take over 2 hours; `render.py` picked 1280x720 at 24 fps (estimate 37 minutes), which took 40.
+For example, the 8 minute awordaday explainer on an 8 vCPU cloud VM with no GPU (7 parallel segments):
+1920x1080 at 30 fps took 41 minutes and 854x480 at 15 fps took 6; 1080p60 would take well over an hour.
+The same video renders in about 10 minutes on a MacBook's GPU. So `render.py` defaults to a 10 minute
+budget, which on such a VM means about 960x540, and its plan lists what better formats would cost
+(`--budget` raises the limit). For full quality without a local GPU, render on any machine that has
+one: a small rented cloud GPU (a T4, or a consumer card) is plenty, as long as Vulkan sees it
+(`vulkaninfo --summary` lists the GPU, not only llvmpipe).
 
 ### 1. Install ffmpeg and uv
 

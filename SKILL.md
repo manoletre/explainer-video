@@ -112,11 +112,15 @@ Narration (llama.cpp) runs fine on any of these; rendering is what depends on th
    `manimgx inspect <slug>.py -t 12.5,end` checks particular moments.
 7. **Render**: `python3 <skill>/scripts/render.py <slug>.py` (background). It counts the frames that
    change, times the scene's own frames on this machine at each format, picks the best one that
-   finishes within `--budget` minutes (default 45: 1080p60 on a GPU, 720p30 to 1080p30 on a CPU), says
+   finishes within `--budget` minutes (default 10: 1080p60 on a GPU, about 960x540 on an 8-core CPU), says
    so, and renders it (on a GPU with `manimgx render`'s machinery; on a CPU in parallel one-thread
    segments, joined, with the sound, `.srt` and storyboard added), printing progress and an ETA every 20 s. Read its
    plan line and its progress; if the estimate is far longer than the time you have, lower `--budget`
-   rather than waiting. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
+   rather than waiting. On a CPU the plan ends with a `limits:` block: the better formats it measured and
+   the minutes each would take, and that a GPU would do 1080p60 in minutes. Before rendering, tell the
+   user that in one short message (the chosen format and time, one or two better ones with their times,
+   or rendering on a machine with a GPU, e.g. their own laptop) and let them choose; render the default
+   plan if they don't answer or the run is unattended. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
    user the format it chose. Check the result: duration with
    `ffprobe`, a few frames (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
 8. **Deliver** the MP4 plus the cheat sheet, with the length and a one-paragraph summary of the
