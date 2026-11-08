@@ -47,6 +47,12 @@ at 720p30, but the scene's default 1920x1080 at 60 fps renders about 20 times sl
 hours for an 8 minute video. `scripts/render.py` measures this on your machine and picks the format
 that finishes in time; `scripts/hardware.py` tells you which case you are in and what to fix.
 
+On the CPU, lavapipe's worker threads and ManimGX's (rayon) race, so frames come out garbled at random:
+black patches over text, boxes missing, different on every run. `render.py` therefore pins both to one
+thread (`LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`), which draws every frame right but about 4.5 times
+slower per process, and renders the video as one segment per core in parallel, split so each draws as
+many changing frames, then joins them without re-encoding and adds the sound and subtitles.
+
 For example, the 8 minute awordaday explainer on an 8 vCPU cloud VM with no GPU: 1920x1080 at 60 fps
 would take over 2 hours; `render.py` picked 1280x720 at 24 fps (estimate 37 minutes), which took 40.
 
