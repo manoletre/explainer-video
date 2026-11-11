@@ -207,7 +207,8 @@ Both frameworks check this for you (`sync_report.txt`).
   arrow().end(1, 0.5))` (plays when bracket 1 of line ll1 is spoken), `yield* finish()` at the end.
   Text in `C.font` (PT Serif), colors from `C` (the theme). Coordinates: (0, 0) is the center, y down.
 - `motion_canvas.py check <dir>` renders a half-size preview in headless Chrome, the storyboard
-  sheets and `sync_report.txt`. `render <dir>` scales the preview's time to the full size, renders
+  sheets, `layout_report.txt` (overlaps and off-frame, at every beat; lines and arrows may touch what
+  they connect) and `sync_report.txt`. `render <dir>` scales the preview's time to the full size, renders
   the best size within `--budget`, and joins the frames and the narration with ffmpeg; `.srt` beside
   it. Example: `examples/linked-list-mc/`.
 
@@ -233,9 +234,10 @@ Both frameworks check this for you (`sync_report.txt`).
 - The scene `<slug>.py` beside `narration.py` is a Blender script with `scripts/blender_kit.py`:
   `K.setup()`, objects (`K.sphere`, `K.box`, `K.cylinder(a, b, r)`, `K.text`), materials (`K.gold()`,
   `K.plain()`, `K.material(color, metal, rough, emit)`), timed moves (`K.grow(obj, K.at("wa1", 1))`,
-  `K.move`, `K.spin`, `K.camera_to(loc, t, dur, look)`), then `K.finish()`. Times are seconds.
-- `python3 <skill>/scripts/blender.py check <slug>.py` renders half-size stills after every bracket and
-  the sync report; `render <slug>.py` estimates from them and renders the best size within `--budget`
+  `K.shrink`, `K.move`, `K.spin`, `K.camera_to(loc, t, dur, look)`), then `K.finish()`. Times are seconds.
+- `python3 <skill>/scripts/blender.py check <slug>.py` renders half-size stills after every bracket,
+  the layout report (text off the frame or overlapping another object, as the camera sees each still;
+  3D shapes may touch) and the sync report; `render <slug>.py` estimates from them and renders the best size within `--budget`
   (Eevee on a GPU; Cycles at 16 samples, denoised, on the CPU), then joins frames and narration.
   Without a GPU keep Blender shots short. Example: `examples/water-blender/`.
 

@@ -21,8 +21,10 @@ for i, h in enumerate(Hs):
     K.grow(K.cylinder(O, h, 0.1, K.plain(K.S["dim"])), t)
 angle = K.text("bond angle ≈ 104.5°", (0, 0, -1.55), 0.3)
 K.grow(angle, K.at("wa2", 0))
-bent = K.text("bent, not straight", (2.6, 0, 0.3), 0.28, K.S["ink"])
+bent = K.text("bent, not straight", (2.3, 0, 0.3), 0.28, K.S["ink"])
 K.grow(bent, K.at("wa2", 1))
+for label in (title, angle, bent):
+    K.shrink(label, K.at("wa3", 0))
 K.camera_to((11, 0, 0.4), K.at("wa3", 0), dur=2.2, look=(0, 0, 0.4))
 K.grow(K.box((0, 0, 0.1), (3.6, 0.02, 2.4), K.material(K.S["accent"], 0, 0.6, emit=0.4)), K.at("wa3", 1))
 flat = K.text("one plane", (0, -1.4, -1.55), 0.3, K.S["ink"])

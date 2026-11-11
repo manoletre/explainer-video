@@ -63,8 +63,8 @@ def check(scene):
     sheets = TL.sheets(sb)
     print(f"storyboard: {len(times)} stills at half size in {took:.0f} s ({took / len(times):.1f} s each); "
           f"{len(sheets)} sheets in {sb}")
-    used = json.loads((sb / "check.json").read_text())["used"]
-    return TL.check_reports(d, tl, used, [])
+    res = json.loads((sb / "check.json").read_text())
+    return TL.check_reports(d, tl, res["used"], res.get("layout", []))
 
 
 def render(scene, a):
