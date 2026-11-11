@@ -1,0 +1,17 @@
+{
+  "name": "explainer-motion-canvas",
+  "private": true,
+  "type": "module",
+  "scripts": {"check": "tsc --noEmit", "editor": "vite"},
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/pt-serif": "5.3.0",
+    "@motion-canvas/2d": "3.17.2",
+    "@motion-canvas/core": "3.17.2",
+    "@motion-canvas/ffmpeg": "3.17.2",
+    "@motion-canvas/ui": "3.17.2",
+    "@motion-canvas/vite-plugin": "3.17.2",
+    "puppeteer": "25.17.0"
+  },
+  "devDependencies": {"typescript": "5.9.3", "vite": "5.4.21"}
+}
