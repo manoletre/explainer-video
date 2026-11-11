@@ -1,68 +1,88 @@
 ---
 name: explainer-video
-description: Make a narrated explainer video (MP4) about a paper, method or concept, animated with ManimGX and voiced locally by LFM3-Audio, optionally tied to the user's own project. Use whenever the user asks for an animation, an animated explainer, or an explainer video.
+description: Make a narrated explainer video (MP4) about a paper, method or concept, optionally tied to the user's own project. Picks the fastest framework that shows it well on this machine (Remotion for diagrams, charts and text; ManimGX for math animation and 3D), voices it locally with Kokoro, in the manoletre.com style (PT Serif, gold on black, or light). Use whenever the user asks for an animation, an animated explainer, or an explainer video.
 ---
 
 # Narrated explainer videos
 
-The reference is `examples/sec/` in this skill: a 3Blue1Brown-style explainer of the
-Self-Evolving Curriculum paper. Match it: dark background, one idea per beat,
-every animation timed to the words that describe it, the real math built up one piece at a time,
-and, when the user has a project the idea relates to, a closing part about how it applies there.
+A good explainer: one idea per beat, every animation timed to the words that describe it, worked
+examples with real numbers, high-contrast frames in the house style, and, when the user has a project
+the idea relates to, a closing part about how it applies there. References in this skill:
+`examples/hash-tables/` (Remotion, 1.3 min) and `examples/sec/` (ManimGX, 11 min, real math).
 
-Tools (see README.md for setup; if one is missing, tell the user how to install it):
-- `manimgx` (`uv tool install manimgx`; CLI, Manim CE API, `import manimgx as m`): `inspect` for storyboard and layout report, `render` for the MP4 and its `.srt`.
-- LFM3-Audio-2B GGUF for TTS and ASR, in `$LFM_AUDIO_CKPT` (default
-  `~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF/`), run with llama.cpp's `llama-tts` and
-  `llama-mtmd-cli` from `runner/b11985/` there. `scripts/fetch_model.sh` downloads both.
-- `ffmpeg`/`ffprobe`.
-- `scripts/hardware.py` (what this machine can do: GPU or CPU rendering, RAM, cores, missing tools) and
-  `scripts/render.py` (renders at the best format that finishes in time, with progress).
-- Helpers in this skill's `scripts/`: `lfm_audio.py` (TTS, ASR, word error rate), `make_narration.py`
-  (each line spoken up to 3 times, the take whose transcript is closest wins), `lfm_voice.py`
-  (the scene's `voice`, reuses those clips), `stage.py` (a laser `Pointer` the narration can move, and
-  `say_synced`, which flags speech over an empty or frozen screen). `examples/sec/sec_explainer.py` +
-  `examples/sec/narration.py` are a full video: copy its helpers (`T`, `M`, `card`, `header`, `beat`,
-  `clear_all`) and idioms.
+## The order of decisions
+
+1. **What should the viewer see?** Plan the visualization first, without thinking about tools: for
+   each section, what is on screen. Then name its needs from this list (only what the video depends
+   on; one formula shown once is `formula`, not `math-animation`):
+
+   | need | what it covers |
+   |---|---|
+   | `text` | titles, labels, short on-screen text |
+   | `diagram` | boxes, arrows, flows, pipelines, architectures, trees, graphs of nodes |
+   | `chart` | bar, line, scatter, pie charts of data, growing or updating |
+   | `plot` | a function's curve on axes, drawn or traced |
+   | `formula` | equations shown, highlighted, one step after another |
+   | `code` | code with highlighted lines |
+   | `ui` | screens, terminals, app mockups, chat transcripts |
+   | `image` | photos, screenshots, figures from a paper |
+   | `timeline` | events and phases along a time axis |
+   | `math-animation` | an equation transforming term by term, shapes morphing, geometric constructions, vector fields, linear maps on a grid |
+   | `3d` | surfaces, solids, 3D camera moves |
+
+2. **What can this machine do?** `python3 <skill>/scripts/pick.py <needs...>` (for example
+   `pick.py diagram chart formula`). It runs `hardware.py` (CPU, RAM, disk, GPU, Node, ManimGX,
+   the voice, with a few seconds' voice speed test) and prints each framework's status here.
+3. **The fastest framework that does the job well.** pick.py prints `CHOICE`: the first framework,
+   fastest first, that does every need well and runs here. The table (`pick.py --list` prints it):
+
+   | framework | set up by the skill | good for | weak at | hardware | speed |
+   |---|---|---|---|---|---|
+   | **Remotion** | yes | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
+   | **ManimGX** | yes | math: equations transforming, function graphs, geometry, linear algebra, 3D | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
+   | Motion Canvas | no | Manim-style vector tweening, code, LaTeX | few agent examples | CPU (browser) | close to Remotion |
+   | Manim Community | no | the same math, the most examples online | slow at 1080p, no GPU path | CPU (Cairo) | minutes per minute of video |
+   | three.js (`@remotion/three`) | no | 3D that isn't math: models, molecules, scenes | needs WebGL; slow on the CPU | a GPU | GPU fast, CPU slow |
+   | Blender | no | photoreal 3D, physics | slow to write and render | a GPU | minutes per second on the CPU |
+
+   Use a framework the skill doesn't set up only if the user asks for it; if one would clearly be
+   better, say so. Most explainers (systems, algorithms, pipelines, results) are Remotion videos.
+4. **Act on pick.py's output.** Do every `FIX` (install Node, run `setup_voice.sh`, ...). Every
+   `NOTICE` is a limit of this hardware: a framework that would do the job best can't run here or is
+   slow, or Kokoro can't narrate or is slow. Tell the user in your next message, before the long work:
+   what you'll use instead and what it costs (quality, minutes), the options (a longer render, a machine
+   with a GPU, the user's own laptop, a small rented cloud GPU), and ask them for feedback on it at
+   **hi@manoletre.com**. If they don't answer or the run is unattended, go on with the default plan.
+   Repeat the notice in the delivery message.
+
+## Style
+
+Every video uses the house style of manoletre.com: **PT Serif** for text (JetBrains Mono for code),
+high contrast, gold `#FFD700` as the one accent. Two themes, from `scripts/style.py`:
+- `dark` (the default): black `#000000` background, white text, gold highlights.
+- `light`: white background, black text, gold highlight fills with black text on them, dark gold
+  `#8A6A00` for accent text and lines.
+
+The user chooses: for one video, `THEME = "light"` in its `narration.py`; for every video,
+`python3 <skill>/scripts/style.py light` (saved in `~/.config/explainer-video/config.json`;
+`style.py dark` goes back). When they state a general preference, save it that way. Say which theme
+you're using in the plan message. Don't invent other colors: use the theme's `fg`, `dim`, `accent`
+(fills, with `on_accent` text on them), `ink` (accent text and lines), `good`, `bad`, `blue`, `panel`,
+`line`. Highlights are gold fills with black text (a marker), not colored text. Keep text large
+(28 px at least on a 1080p frame) and short.
 
 ## The screen leads the voice
 
-The viewer must always be able to see what the narrator is talking about. Two failures to avoid:
-- **Dead air**: talking over an empty screen. It happens after `header()` or a fade-out, when the first
-  `[bracket]` comes late in the line ("Math piece three, from the appendix. Suppose [...]"): every word
-  before it plays over black. A beat that starts on a cleared screen brackets its opening words, so
-  something appears as the voice starts.
-- **Frozen screen**: talking for more than about 4 seconds while nothing moves, so the viewer loses
+The viewer must always see what the narrator is talking about. Two failures to avoid:
+- **Dead air**: talking over an empty screen. It happens at a section start when the first
+  `[bracket]` comes late in the line: every word before it plays over nothing. A line that starts a
+  section brackets its opening words, so something appears as the voice starts.
+- **Frozen screen**: talking for more than about 4 seconds while nothing changes, so the viewer loses
   which part of the picture the words are about. Every sentence gets an animation, and when the words
-  refer to something already on screen, point at it: `self.ptr.at(x)` (flies there and pulses),
-  `self.ptr.sweep(x)` (underlines it as it is read), `self.ptr.circle(x)`, `self.ptr.hide()`.
-  `m.Indicate(x)` works too.
+  refer to something already on screen, point at it (the laser `Pointer`) or highlight it (`hot`).
 
-Silence is fine: after a line, a pause that lets a point land (an `Indicate` or a pointer pulse, then a
-second or two of nothing) is good pacing. The rule is about speech, not about silence.
-
-## Hardware
-
-Run `python3 <skill>/scripts/hardware.py` before anything else, and act on it:
-- Every `FIX` line blocks the video: do it first (install a tool, fetch the model, or on Linux without
-  a GPU driver `sudo apt install mesa-vulkan-drivers`, whose lavapipe lets ManimGX draw on the CPU).
-- `renders on the GPU`: the scene's default 1920x1080 at 60 fps is fine.
-- `renders on the CPU` (a cloud VM, a container, a laptop without a Vulkan driver): every changed frame
-  is drawn by the CPU, 0.15 s at 720p and 0.3 s at 1080p on 8 cores, so a plain `manimgx render` of an
-  8 minute video at 1080p60 takes hours and prints nothing while it runs. Always render with
-  `scripts/render.py`, never with a bare `manimgx render`, and keep the scene's own config at its
-  defaults (`render.py` sets the format). Plan the video for the machine: 6–8 minutes, not 12; hold a
-  finished picture with `self.wait` rather than keeping things moving (held frames cost nothing);
-  avoid long `run_time`s on full-screen transforms and updaters that run for a whole line.
-  On the CPU, lavapipe's and ManimGX's worker threads race and garble frames at random (black patches
-  over text, boxes missing, different on every run; the layout check cannot see it). `render.py` pins
-  them to one thread (`LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`) and renders the video as parallel
-  segments, one process per core; run any `manimgx inspect` you look at with the same two variables.
-- Fewer than 6 GB of RAM: `LFM_AUDIO_QUANT=Q4_K_M scripts/fetch_model.sh` and set `LFM_AUDIO_QUANT=Q4_K_M`
-  for the voice scripts. Few cores: narration is slower (about 8 s per take on 8 cores); keep it in the
-  background and do the scene meanwhile.
-
-Narration (llama.cpp) runs fine on any of these; rendering is what depends on the GPU.
+Silence is fine: after a line, a pause that lets a point land is good pacing. The rule is about speech.
+Both frameworks check this for you (`sync_report.txt`).
 
 ## Steps
 
@@ -73,66 +93,105 @@ Narration (llama.cpp) runs fine on any of these; rendering is what depends on th
    the idea, the math one piece at a time, worked numeric examples, results, and then (if there is
    a project) "how this applies to <project>" with concrete steps, then a summary or questions.
    For the project part, use real names, files, numbers and known findings from the project.
-3. **Write `narration.py`**: `VOICE = "US male"` (or `"UK female"`, `"es male"`: a locale and male/female) and `LINES = {key: text}`, one line per beat
-   (2–5 sentences). Spoken form, not screen form: "L L M", "G R P O", "two point six B",
-   "zero point four three", no symbols, no CamelCase, no code identifiers. Wrap in `[brackets]`
-   the words each animation should play on; brackets are stripped before speaking.
-4. **Write the scene** `<slug>.py` beside it:
-   ```python
-   sys.path.insert(0, "<this skill>/scripts"); from lfm_voice import load_script, lfm_voice
-   N = load_script(HERE / "narration.py").LINES
-   class XExplainer(m.Scene):
-       voice = staticmethod(lfm_voice(HERE / "narration.py"))
-   ```
-   In `construct()`, create `self.ptr = Pointer()` (from `stage`). Each beat is
-   `say_synced(self, key, N[key], *anims)` (the example's `beat`) with exactly one animation per
-   bracketed span (wrap several in `m.AnimationGroup`); a pointer gesture is an animation like any
-   other, so "the [denominator] is the spread" plays `self.ptr.at(frac[2])` on "denominator".
-   Sections start with `header("3 · Title")`, which clears the screen (and hides the pointer) and
-   marks the title with `chrome()` so it doesn't count as content. For an emphasis pause, use
-   `hold(self, m.Indicate(x))` from `stage`. Style: background `#111111`, text `#FFFFFF`, dim `#9A9A9A`, accent `#FF8700`,
-   good `#5FD787`, bad `#FF5F5F`, blue `#5FAFFF`, panels `#1C1C1C`, font "Avenir Next"
-   (or another installed sans), formulas with `m.MathTex`. Prefer diagrams, bars, dots, flows and
-   transforms to walls of text; on-screen text is short and complements the narration rather than
-   repeating it. Label toy simulations and illustrative shapes as such on screen.
-5. **Generate the voice**: `python3 <skill>/scripts/make_narration.py <dir>/narration.py`
-   (run in the background; about 7 s per take, up to 3 takes per line). Read `audio/report.json`; rewrite any line
-   flagged `<-- check` (word error rate > 0.15) in plainer spoken words and redo it with
-   `make_narration.py <dir>/narration.py key1 key2`. Number-heavy lines get false flags (the transcript writes
-   "150" for "a hundred and fifty"), so read the transcript before redoing.
-6. **Inspect and fix layout and sync**: `manimgx inspect <slug>.py` writes storyboard PNGs and a layout
-   report (overlaps, text off screen), and `say_synced` writes `sync_report.txt` beside the scene. Look
-   at every storyboard PNG, fix overlaps, crowding, tiny text and off-frame items. Fix every
-   `sync_report.txt` entry: for **dead air**, move the first bracket onto the opening words (or show
-   the picture before the line starts); for **still**, add a bracket on the words it quotes, with a
-   pointer gesture or the reveal of what they describe. Moving or adding brackets doesn't change
-   what is spoken, so the clips don't need redoing. Inspect again until both reports are clean
-   (a layout flag on `self.ptr` while it is flying between targets is fine; one where it rests is not:
-   point at another `edge`).
-   `manimgx inspect <slug>.py -t 12.5,end` checks particular moments.
-7. **Render**: `python3 <skill>/scripts/render.py <slug>.py` (background). It counts the frames that
-   change, times the scene's own frames on this machine at each format, picks the best one that
-   finishes within `--budget` minutes (default 10: 1080p60 on a GPU, about 960x540 on an 8-core CPU), says
-   so, and renders it (on a GPU with `manimgx render`'s machinery; on a CPU in parallel one-thread
-   segments, joined, with the sound, `.srt` and storyboard added), printing progress and an ETA every 20 s. Read its
-   plan line and its progress; if the estimate is far longer than the time you have, lower `--budget`
-   rather than waiting. On a CPU the plan ends with a `limits:` block: the better formats it measured and
-   the minutes each would take, and that a GPU would do 1080p60 in minutes. Before rendering, tell the
-   user that in one short message (the chosen format and time, one or two better ones with their times,
-   or rendering on a machine with a GPU, e.g. their own laptop) and let them choose; render the default
-   plan if they don't answer or the run is unattended. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
-   user the format it chose. Check the result: duration with
-   `ffprobe`, a few frames (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
-8. **Deliver** the MP4 plus the cheat sheet, with the length and a one-paragraph summary of the
-   argument. Keep files in `explainers/<slug>/` inside the project (`audio/` holds the clips).
-   Don't commit the MP4 or audio unless asked.
+   Then plan the visualization and run `pick.py` (above). Send the user one short plan message: the
+   framework and why, the theme, the expected render time, and any NOTICE.
+3. **Write `explainers/<slug>/narration.py`**: `VOICE = "am_michael"` (a Kokoro voice: `af_heart`,
+   `bf_emma`, `bm_george`, ...; the first letter is the language: a US English, b UK English, e Spanish,
+   f French, i Italian, p Portuguese, h Hindi, j Japanese, z Chinese; "US male" / "UK female" also work),
+   optionally `THEME`, and `LINES = {key: text}`, one line per beat (2–5 sentences). For Remotion also
+   `SECTIONS = {first_key: "3 · Title"}`, the line each section starts with. Spoken form, not screen
+   form: "L L M", "G R P O", "two point six B", "zero point four three", no symbols, no CamelCase, no
+   code identifiers. Wrap in `[brackets]` the words each animation should play on; brackets are not
+   spoken, and moving them never needs new audio.
+4. **Generate the voice** in the background: `python3 <skill>/scripts/make_narration.py <dir>/narration.py`
+   (Kokoro speaks, Whisper transcribes it back and times every word; about 0.4 s per second of speech
+   on 8 cores). Read `audio/report.json`: rewrite any line flagged `<-- check` (word error rate > 0.15)
+   in plainer spoken words and redo it with `make_narration.py <dir>/narration.py key1 key2`. Kokoro is
+   deterministic, so rerunning an unchanged line gives the same take. Number-heavy lines and names get
+   false flags (Whisper writes "Ada" as "ADA"), so read the transcript before rewriting.
+5. **Build the video** in the chosen framework: *Remotion* or *ManimGX* below.
+6. **Check layout and sync** until both reports are empty, looking at every storyboard image.
+7. **Render** within the time budget (default 10 minutes), telling the user the format it chose.
+8. **Deliver** the MP4, the `.srt` and the cheat sheet, with the length, a one-paragraph summary, the
+   framework used, and any NOTICE (with hi@manoletre.com). Keep files in `explainers/<slug>/` in the
+   project; don't commit the MP4, audio or `node_modules` unless asked.
+
+### Remotion
+
+- `python3 <skill>/scripts/remotion.py new <dir>`: copies the project into `<dir>/remotion/`
+  (React + TypeScript), installs it (`npm ci`, about 300 MB, and Chrome's headless shell), and writes a
+  starter `src/Video.tsx` with one `<Section>` per section and every line's brackets listed. Write the
+  video in `Video.tsx` only; `kit.tsx` has the blocks. You can start before the voice is ready: the
+  timing is estimated from the word count until `make_narration.py` has run.
+- Time everything from the narration: `at('bi1', 2)` is when bracket 2 of line `bi1` starts being
+  spoken, `done('bi1', 2)` when it ends, measured from the audio. Never hard-code seconds.
+- The blocks (positions in pixels on 1920x1080, x/y the element's center; every block takes
+  `at` (appear), `out` (fade), `dim` (drop to 35%), `hot={[t, ...]}` (gold pulse), `label`):
+  `<Section id>` (a section: its title and content, cleared when the next starts), `<Box x y w h title sub>`,
+  `<Text x y size color weight align w mono>`, `<Formula x y tex>` (KaTeX), `<Arrow from to bend>`,
+  `<Bars x y w h data>`, `<Plot x y w h xr yr series>`, `<Code x y w code marks>`, `<Picture src>`
+  (a file in `remotion/public/`), `<Pointer moves={[{at, x, y}, {at, x, y, ring}, {at, x, y, sweep},
+  {at, hide: true}]}/>`, and `C` (the theme's colors). Plain React, SVG and CSS work too; derive every
+  animation from `useTime()` (seconds), never from CSS transitions or timers.
+- One concept per screen; put content between y = 140 and 1000 (the section title sits top left).
+- `npx tsc --noEmit` in `<dir>/remotion` checks the code.
+- `python3 <skill>/scripts/remotion.py check <dir>`: renders a still just after every bracket starts,
+  tiles them into `remotion/storyboard/sheet_NN.png` (time and line in red in each corner), and writes
+  `layout_report.txt` (overlapping boxes, boxes off the frame) and `sync_report.txt` (dead air,
+  frozen screen, and brackets nothing animates) beside `narration.py`. Look at every sheet; fix and
+  check again. `--times 12.5,40` checks particular moments.
+- `python3 <skill>/scripts/remotion.py render <dir>`: times a sample of the video's own frames,
+  renders at 1920x1080 if it fits the budget (else 1280x720 or 960x540, with a `limits:` block of the
+  better sizes and their times), with progress every 20 s, then writes `<dir>/<dir name>.mp4` and its
+  `.srt`. `--plan` only estimates, `--budget 20` allows longer, `--captions` burns captions in, and
+  `CAPTIONS = True` in narration.py does that for every render.
+
+### ManimGX
+
+- Set up: `uv tool install manimgx`, `scripts/setup_fonts.sh` (PT Serif and JetBrains Mono for the
+  system, which ManimGX draws with), LaTeX for `m.MathTex`, and on Linux without a GPU
+  `sudo apt install mesa-vulkan-drivers` (lavapipe draws on the CPU).
+- The scene `<slug>.py` beside `narration.py`:
+  ```python
+  sys.path.insert(0, "<this skill>/scripts")
+  from kokoro_voice import kokoro_voice, load_script
+  from stage import Pointer, say_synced, hold, chrome
+  from style import theme
+  N = load_script(HERE / "narration.py").LINES
+  S = theme(HERE / "narration.py"); m.config.background_color = S.bg
+  class XExplainer(m.Scene):
+      voice = staticmethod(kokoro_voice(HERE / "narration.py"))
+  ```
+  Copy the helpers and idioms of `examples/sec/sec_explainer.py` (`T`, `M`, `card`, `header`, `beat`,
+  `clear_all`), with the theme: `S.fg`, `S.dim`, `S.ink` for accents, `S.panel`, `font=S.font`.
+  In `construct()`, create `self.ptr = Pointer()`. Each beat is `say_synced(self, key, N[key], *anims)`
+  with exactly one animation per bracketed span (wrap several in `m.AnimationGroup`); a pointer gesture
+  (`self.ptr.at(x)`, `.sweep(x)`, `.circle(x)`, `.hide()`) is an animation like any other. Sections
+  start with `header("3 · Title")`, which clears the screen. For an emphasis pause,
+  `hold(self, m.Indicate(x))`. Formulas with `m.MathTex`; build the real math up one piece at a time.
+- Inspect: `manimgx inspect <slug>.py` writes storyboard PNGs and a layout report; `say_synced` writes
+  `sync_report.txt`. Fix both until clean (a flag on `self.ptr` while it flies is fine; one where it
+  rests is not). On a CPU, run it with `LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`: lavapipe's and
+  ManimGX's threads race and garble frames at random otherwise.
+- Render: `python3 <skill>/scripts/render.py <slug>.py` (background), never a bare `manimgx render`.
+  It counts the frames that change, times the scene's own frames at each format, picks the best that
+  finishes within `--budget` minutes (default 10: 1080p60 on a GPU, about 960x540 on an 8-core CPU),
+  and renders it (on a CPU as parallel one-thread segments, joined, with sound, `.srt` and storyboard),
+  printing progress and an ETA. On a CPU its plan ends with a `limits:` block (better formats and their
+  minutes): that is the NOTICE to give the user, with hi@manoletre.com. Plan ManimGX videos for the
+  machine: on a CPU 6–8 minutes, hold finished pictures with `self.wait` (held frames cost nothing),
+  no long full-screen transforms. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format.
+
+Check the result either way: duration with `ffprobe`, a few frames
+(`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
 
 ## Quality bar
 
 - Every claim either comes from the source, is computed on screen, or is marked as an assumption.
-- One concept per beat, built up visually; transforms connect a step to the next.
-- Worked examples with real numbers (as in the SEC advantage example: 2 of 8 correct → mean 0.25 → std 0.433 → ±Â).
-- No speech over an empty screen and no more than about 4 s of speech with nothing moving
+- One concept per beat, built up visually; each step visibly connects to the next.
+- Worked examples with real numbers (as in the SEC example: 2 of 8 correct → mean 0.25 → std 0.433 → ±Â).
+- No speech over an empty screen and no more than about 4 s of speech with nothing new on screen
   (`sync_report.txt` is empty); deliberate silent pauses for emphasis are fine.
 - No rushed beats: an animation can't outrun its words, so long animations need long spans.
+- High contrast, the theme's colors only, PT Serif, nothing smaller than 28 px at 1080p.
 - The project section names the real files, scores and constraints, and gives an ordered plan.
