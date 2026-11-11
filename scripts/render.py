@@ -274,7 +274,7 @@ def render_cpu(file, name, w, h, fps, preset, crf, c):
           flush=True)
     shutil.rmtree(tmp)
     print("storyboard and layout report: manimgx inspect", flush=True)
-    subprocess.run(["manimgx", "inspect", str(file), *([name] if name else [])], env=env, check=False)
+    subprocess.run([sys.executable, "-m", "manimgx", "inspect", str(file), *([name] if name else [])], env=env, check=False)
 
 
 def _progress(total, lo=0, hi=None, out=None, every=20):
