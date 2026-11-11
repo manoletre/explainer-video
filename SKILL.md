@@ -54,6 +54,10 @@ Run `python3 <skill>/scripts/hardware.py` before anything else, and act on it:
   defaults (`render.py` sets the format). Plan the video for the machine: 6–8 minutes, not 12; hold a
   finished picture with `self.wait` rather than keeping things moving (held frames cost nothing);
   avoid long `run_time`s on full-screen transforms and updaters that run for a whole line.
+  On the CPU, lavapipe's and ManimGX's worker threads race and garble frames at random (black patches
+  over text, boxes missing, different on every run; the layout check cannot see it). `render.py` pins
+  them to one thread (`LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`) and renders the video as parallel
+  segments, one process per core; run any `manimgx inspect` you look at with the same two variables.
 - Fewer than 6 GB of RAM: `LFM_AUDIO_QUANT=Q4_K_M scripts/fetch_model.sh` and set `LFM_AUDIO_QUANT=Q4_K_M`
   for the voice scripts. Few cores: narration is slower (about 8 s per take on 8 cores); keep it in the
   background and do the scene meanwhile.
@@ -108,10 +112,15 @@ Narration (llama.cpp) runs fine on any of these; rendering is what depends on th
    `manimgx inspect <slug>.py -t 12.5,end` checks particular moments.
 7. **Render**: `python3 <skill>/scripts/render.py <slug>.py` (background). It counts the frames that
    change, times the scene's own frames on this machine at each format, picks the best one that
-   finishes within `--budget` minutes (default 45: 1080p60 on a GPU, usually 720p30 on a CPU), says so,
-   and renders with `manimgx render`'s machinery, printing progress and an ETA every 20 s. Read its
+   finishes within `--budget` minutes (default 10: 1080p60 on a GPU, about 960x540 on an 8-core CPU), says
+   so, and renders it (on a GPU with `manimgx render`'s machinery; on a CPU in parallel one-thread
+   segments, joined, with the sound, `.srt` and storyboard added), printing progress and an ETA every 20 s. Read its
    plan line and its progress; if the estimate is far longer than the time you have, lower `--budget`
-   rather than waiting. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
+   rather than waiting. On a CPU the plan ends with a `limits:` block: the better formats it measured and
+   the minutes each would take, and that a GPU would do 1080p60 in minutes. Before rendering, tell the
+   user that in one short message (the chosen format and time, one or two better ones with their times,
+   or rendering on a machine with a GPU, e.g. their own laptop) and let them choose; render the default
+   plan if they don't answer or the run is unattended. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format. Tell the
    user the format it chose. Check the result: duration with
    `ffprobe`, a few frames (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
 8. **Deliver** the MP4 plus the cheat sheet, with the length and a one-paragraph summary of the
