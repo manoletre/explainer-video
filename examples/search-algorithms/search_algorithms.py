@@ -1,4 +1,4 @@
-"""Six search algorithms compared, for interview prep. ManimGX + LFM3-Audio narration.
+"""Six search algorithms compared, for interview prep. ManimGX + Kokoro narration.
 
     manimgx inspect search_algorithms.py
     manimgx render search_algorithms.py
@@ -15,21 +15,23 @@ import manimgx as m
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent.parent / "scripts"))
-from lfm_voice import load_script, lfm_voice  # noqa: E402
+from kokoro_voice import kokoro_voice, load_script  # noqa: E402
 from stage import Pointer, chrome, say_synced  # noqa: E402
+from style import theme  # noqa: E402
 
 N = load_script(HERE / "narration.py").LINES
 
-m.config.background_color = "#111111"
-FG = "#FFFFFF"
-DIM = "#9A9A9A"
-ACCENT = "#FF8700"
-GOOD = "#5FD787"
-BAD = "#FF5F5F"
-BLUE = "#5FAFFF"
-PANEL = "#1C1C1C"
-FONT = "Avenir Next"
-MONO = "Menlo"
+S = theme(HERE / "narration.py")  # scripts/style.py: PT Serif, gold on black (or light)
+m.config.background_color = S.bg
+FG = S.fg
+DIM = S.dim
+ACCENT = S.ink
+GOOD = S.good
+BAD = S.bad
+BLUE = S.blue
+PANEL = S.panel
+FONT = S.font
+MONO = S.mono
 
 SORTED = [2, 5, 8, 12, 16, 23, 38, 45, 56, 62, 72, 80, 85, 91, 95, 99]
 
@@ -96,7 +98,7 @@ def place(p, c, up=True):
 
 
 class SearchAlgorithms(m.Scene):
-    voice = staticmethod(lfm_voice(HERE / "narration.py"))
+    voice = staticmethod(kokoro_voice(HERE / "narration.py"))
 
     def construct(self) -> None:
         self.ptr = Pointer()

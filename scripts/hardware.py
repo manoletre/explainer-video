@@ -1,13 +1,17 @@
-"""What this machine can do for an explainer video, and how to set the skill up for it.
+"""What this machine can do for an explainer video: which frameworks and the voice run here, and how fast.
 
-    python3 scripts/hardware.py           # a summary, with what to fix or change
-    python3 scripts/hardware.py --json    # the same as JSON
+    python3 scripts/hardware.py                  # a summary, with FIX and NOTE lines
+    python3 scripts/hardware.py --for remotion   # only what that framework and the voice need
+    python3 scripts/hardware.py --json           # the same as JSON
+    python3 scripts/hardware.py --no-probe       # skip the few seconds of voice speed test
 
-ManimGX draws every frame with the GPU through wgpu (Vulkan on Linux, Metal on macOS). With no GPU
-it can use Mesa's lavapipe, which draws on the CPU: it works, but each changed frame costs about
-0.15 s at 1280x720 and 0.3 s at 1920x1080 on 8 cores, so a 1080p60 render of an 8 minute video
-takes hours. scripts/render.py measures the real cost and picks a resolution and frame rate that
-finish in time. LFM3-Audio (llama.cpp) runs fine on the CPU: about 8 s per take on 8 cores.
+Remotion draws frames in headless Chrome on the CPU: an 8 minute 1080p30 video takes about 5 minutes
+on 8 cores, and it needs no GPU. ManimGX draws with the GPU through wgpu (Metal on macOS, Vulkan on
+Linux); without one it can use Mesa's lavapipe on the CPU, which works but is slow (the same video:
+41 minutes at 1080p30, about 9 at 960x540, on 8 cores), so scripts/render.py measures the real cost
+and picks a format that finishes in time. Kokoro, the voice, runs on the CPU: about 4 times faster
+than real time on 8 cores and about real time on one, in under 700 MB of RAM.
+pick.py uses this to choose the framework for a video.
 """
 import json
 import os
@@ -18,16 +22,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-CKPT = Path(os.environ.get("LFM_AUDIO_CKPT", Path.home() / ".lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF"))
-QUANT = os.environ.get("LFM_AUDIO_QUANT", "Q8_0")
-BUILD = os.environ.get("LFM_LLAMA_BUILD", "b11985")
-FLAVOR = os.environ.get("LFM_LLAMA_FLAVOR", "")
-RUNNER = Path(os.environ.get("LFM_AUDIO_RUNNER", CKPT / f"runner/{BUILD}{'-' + FLAVOR if FLAVOR else ''}"))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import voice as V  # noqa: E402
 
-# the least the whole pipeline needs, and what makes it comfortable
-MIN = {"cores": 4, "ram_gb": 6, "disk_gb": 4}
-GOOD = {"cores": 8, "ram_gb": 16}
 GPU_TYPES = {"DiscreteGpu", "IntegratedGpu", "VirtualGpu"}
+NODE_MIN = 18
+FEEDBACK = "hi@manoletre.com"
+# measured on an 8 vCPU cloud VM with no GPU, for an 8 minute video
+REMOTION_MIN_8CORES = 5  # 1920x1080 at 30 fps
+MANIMGX_CPU_MIN_8CORES = {"1920x1080 at 30 fps": 41, "960x540 at 24 fps": 9}
 
 
 def _run(cmd, timeout=60):
@@ -43,7 +47,7 @@ def manimgx_python():
     exe = shutil.which("manimgx") or str(Path.home() / ".local/bin/manimgx")
     try:
         first = Path(exe).read_text(errors="replace").splitlines()[0]
-    except (OSError, IndexError):
+    except (OSError, IndexError, UnicodeDecodeError):
         return None
     if first.startswith("#!") and Path(first[2:].strip()).exists():
         return first[2:].strip()
@@ -106,83 +110,210 @@ def gpu():
     return {"error": msg}
 
 
-def profile(where="."):
-    cpu = _cpu()
-    g = gpu()
+def gpu_hint():
+    """A GPU this machine seems to have, found without ManimGX (its name), or None."""
+    if sys.platform == "darwin":
+        return "Apple silicon GPU (Metal)" if platform.machine() == "arm64" else "Mac GPU (Metal)"
+    if shutil.which("nvidia-smi"):
+        code, out, _ = _run(["nvidia-smi", "-L"], timeout=20)
+        if code == 0 and out.strip():
+            return out.strip().splitlines()[0]
+    if shutil.which("lspci"):
+        virtual = re.compile(r"cirrus|qxl|virtio|vmware svga|bochs|red hat|hyper-v|matrox|aspeed", re.I)
+        for ln in _run(["lspci"], timeout=20)[1].splitlines():
+            if re.search(r"vga|3d controller|display", ln, re.I) and not virtual.search(ln):
+                return ln.split(": ", 1)[-1]
+    return None
+
+
+def font_installed(name="PT Serif"):
+    """Whether ManimGX (which draws with the system's fonts) can use this font."""
+    if shutil.which("fc-list"):
+        return name.lower() in _run(["fc-list", ":", "family"])[1].lower()
+    dirs = [Path.home() / "Library/Fonts", Path("/Library/Fonts"), Path("/System/Library/Fonts"),
+            Path("/System/Library/Fonts/Supplemental")]
+    key = name.replace(" ", "").lower()
+    return any(key in f.name.replace("_", "").replace("-", "").lower() for d in dirs if d.exists() for f in d.iterdir())
+
+
+def _node():
+    if not shutil.which("node"):
+        return None
+    m = re.match(r"v(\d+)", _run(["node", "--version"])[1].strip())
+    return int(m[1]) if m else None
+
+
+PROBE = r"""
+import json, sys, tempfile, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import voice as V
+out = Path(tempfile.mkdtemp()) / "probe.wav"
+V._tts_model()
+t = time.time()
+V.tts("A binary search halves the list at every step, so a million items take about twenty comparisons.", out)
+took = time.time() - t
+try:
+    import resource
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**20 if sys.platform == "darwin" else 1024)
+except ImportError:
+    peak = None
+print(json.dumps({"rtf": round(took / V.duration(out), 2), "peak_mb": peak and round(peak)}))
+"""
+
+
+def voice_probe():
+    """Kokoro's speed here: {"rtf": seconds of work per second of speech, "peak_mb": RAM}, or {"error"}."""
+    py = V.python()
+    if py is None:
+        return {"error": "not set up"}
+    code, out, err = _run([py, "-c", PROBE, str(HERE)], timeout=300)
+    if code == 0 and out.strip():
+        return json.loads(out.strip().splitlines()[-1])
+    return {"error": (err.strip().splitlines() or ["voice probe failed"])[-1][:300]}
+
+
+def profile(where=".", probe=True):
+    g = gpu() if manimgx_python() else {"error": "manimgx is not installed"}
+    voice_ready = V.python() is not None and V.MODEL_FILE.exists() and V.VOICES_FILE.exists()
     return {
         "os": platform.system(), "arch": platform.machine(),
-        "apple_silicon": sys.platform == "darwin" and platform.machine() == "arm64",
-        "cpu": cpu, "ram_gb": _ram_gb(), "free_disk_gb": min(_free_gb(where), _free_gb(CKPT)),
-        "gpu": g,
+        "cpu": _cpu(), "ram_gb": _ram_gb(), "free_disk_gb": min(_free_gb(where), _free_gb(V.HOME)),
+        "gpu": g, "gpu_hint": gpu_hint(),
         "render": "gpu" if g.get("device_type") in GPU_TYPES else "cpu" if g.get("device_type") == "Cpu" else "none",
         "tools": {
-            "ffmpeg": bool(shutil.which("ffmpeg")), "manimgx": manimgx_python() is not None,
+            "ffmpeg": bool(shutil.which("ffmpeg")), "node": _node(), "npm": bool(shutil.which("npm")),
+            "manimgx": manimgx_python() is not None,
             "latex": bool(shutil.which("latex") or shutil.which("pdflatex")),
-            "lfm_model": (CKPT / f"LFM3-Audio-2B-{QUANT}.gguf").exists(),
-            "lfm_projector": (CKPT / "mmproj-LFM3-Audio-2B-Q8_0.gguf").exists(),
-            "llama_tts": (RUNNER / "llama-tts").exists(),
-            "llama_mtmd": (RUNNER / "llama-mtmd-cli").exists(),
+            "pt_serif": font_installed(),
+            "voice": voice_ready,
         },
+        "voice": voice_probe() if probe and voice_ready else None,
     }
 
 
-def advice(p):
-    """(blocking problems, things to change): what the skill should do on this machine."""
-    fix, tune = [], []
-    t = p["tools"]
+def _scale(minutes_8cores, cores):
+    return max(1, round(minutes_8cores * 8 / max(1, cores)))
+
+
+def frameworks(p):
+    """For each framework and the voice: status (fast, slow, setup, unavailable), why, fix lines.
+    "slow" and "unavailable" are limits of the hardware; "setup" only needs installing something."""
+    cores, ram, t = p["cpu"]["cores"], p["ram_gb"] or 0, p["tools"]
+    out = {}
+
+    # Remotion: React in headless Chrome, on the CPU
+    if p["arch"].lower() not in ("x86_64", "amd64", "arm64", "aarch64"):
+        out["remotion"] = {"status": "unavailable", "why": f"Remotion's Chrome has no build for {p['arch']}", "fix": []}
+    elif ram < 2:
+        out["remotion"] = {"status": "unavailable", "why": f"{ram} GB of RAM: headless Chrome needs about 2 GB", "fix": []}
+    else:
+        fix = []
+        if not t["node"] or t["node"] < NODE_MIN or not t["npm"]:
+            fix.append(f"Install Node.js {NODE_MIN} or newer with npm (https://nodejs.org; brew install node; "
+                       "or a nodesource / nvm install on Linux)")
+        mins = _scale(REMOTION_MIN_8CORES, cores)
+        status = "setup" if fix else "slow" if mins > 15 or ram < 4 else "fast"
+        why = f"renders in headless Chrome on the CPU: an 8 minute 1080p30 video in about {mins} min"
+        if ram < 4:
+            why += f"; {ram} GB of RAM allows only one or two Chrome workers"
+        out["remotion"] = {"status": status, "why": why, "fix": fix}
+
+    # ManimGX: wgpu, GPU or Mesa's lavapipe
+    fix = []
     if not t["manimgx"]:
         fix.append("Install ManimGX: uv tool install manimgx")
-    if not t["ffmpeg"]:
-        fix.append("Install ffmpeg (brew install ffmpeg / sudo apt install ffmpeg)")
-    if not all(t[k] for k in ("lfm_model", "lfm_projector", "llama_tts", "llama_mtmd")):
-        fix.append("Fetch the voice: scripts/fetch_model.sh (about 2.2 GB)")
-    if p["render"] == "none" and t["manimgx"]:
-        if p["os"] == "Linux":
-            fix.append("ManimGX finds no GPU adapter. Install Mesa's Vulkan drivers, whose lavapipe draws on the "
-                       "CPU: sudo apt install mesa-vulkan-drivers (Fedora: sudo dnf install mesa-vulkan-drivers). "
-                       "On a machine with an NVIDIA GPU, install its driver's Vulkan ICD instead.")
-        else:
-            fix.append(f"ManimGX finds no GPU adapter: {p['gpu'].get('error')}")
-    ram, cores, disk = p["ram_gb"] or 0, p["cpu"]["cores"], p["free_disk_gb"]
-    if ram < 4:
-        fix.append(f"{ram} GB of RAM: the voice model and the renderer need at least 4 GB together (6 GB to be safe)")
-    elif ram < MIN["ram_gb"]:
-        tune.append(f"{ram} GB of RAM: use the smaller voice model, LFM_AUDIO_QUANT=Q4_K_M scripts/fetch_model.sh, "
-                    "and render at 1280x720 or less")
-    if disk < MIN["disk_gb"]:
-        fix.append(f"{disk} GB free: the model, clips and video need about {MIN['disk_gb']} GB")
-    if cores < MIN["cores"]:
-        tune.append(f"{cores} CPU cores: each narration take will take 20 s or more; generate it in the background")
-    if p["cpu"].get("avx2") is False and p["arch"] in ("x86_64", "AMD64"):
-        tune.append("No AVX2: llama.cpp falls back to slower kernels; expect slow narration")
-    if p["render"] == "cpu":
-        tune.append(f"No GPU: ManimGX draws on the CPU ({p['gpu'].get('name')}). Render with scripts/render.py, "
-                    "which benchmarks this machine and picks a resolution and frame rate that finish in budget "
-                    "(typically 1280x720 at 30 fps, or 854x480 at 15 fps for a long video on few cores). "
-                    "Never run a plain 1920x1080 at 60 fps render here: it runs about 20 times slower than real time.")
-    elif p["render"] == "gpu":
-        tune.append(f"GPU: {p['gpu'].get('name')} ({p['gpu'].get('backend')}). The default 1920x1080 at 60 fps is fine.")
-        if p["os"] == "Linux":
-            tune.append("The voice runs on the CPU by default. With an NVIDIA or AMD GPU, LFM_LLAMA_FLAVOR=vulkan "
-                        "scripts/fetch_model.sh fetches a llama.cpp build that runs it on the GPU.")
     if not t["latex"]:
-        tune.append("No LaTeX: m.MathTex needs it (MacTeX / TeX Live). Use m.Text only, or install it.")
+        fix.append("Install LaTeX for m.MathTex (MacTeX: brew install --cask mactex-no-gui; TeX Live on Linux)")
+    if not t["pt_serif"]:
+        fix.append(f"Install the videos' fonts (PT Serif, JetBrains Mono) for ManimGX: {HERE / 'setup_fonts.sh'}")
+    slow = ", ".join(f"{_scale(v, cores)} min at {k}" for k, v in MANIMGX_CPU_MIN_8CORES.items())
+    if p["render"] == "gpu":
+        out["manimgx"] = {"status": "fast", "why": f"draws on the GPU ({p['gpu'].get('name')}): 1080p60 in minutes",
+                          "fix": fix}
+    elif p["render"] == "cpu":
+        out["manimgx"] = {"status": "slow", "fix": fix,
+                          "why": f"no GPU, so it draws on the CPU ({p['gpu'].get('name')}): an 8 minute video takes "
+                                 f"about {slow}"}
+    elif t["manimgx"] and p["os"] == "Linux":
+        fix.append("ManimGX finds no GPU adapter. Install Mesa's Vulkan drivers, whose lavapipe draws on the CPU: "
+                   "sudo apt install mesa-vulkan-drivers (Fedora: sudo dnf install mesa-vulkan-drivers); with an "
+                   "NVIDIA GPU, install its driver's Vulkan ICD instead")
+        out["manimgx"] = {"status": "setup" if p["gpu_hint"] else "slow", "fix": fix,
+                          "why": f"GPU {p['gpu_hint']} is not visible to Vulkan yet" if p["gpu_hint"] else
+                                 f"no GPU: with lavapipe it draws on the CPU, about {slow} for an 8 minute video"}
+    elif t["manimgx"]:
+        out["manimgx"] = {"status": "unavailable", "fix": fix,
+                          "why": f"ManimGX finds no GPU adapter: {p['gpu'].get('error', '')[:160]}"}
+    elif p["gpu_hint"]:
+        out["manimgx"] = {"status": "setup", "fix": fix, "why": f"should draw on the GPU ({p['gpu_hint']})"}
+    else:
+        if p["os"] == "Linux":
+            fix.append("No GPU: also install Mesa's Vulkan drivers (sudo apt install mesa-vulkan-drivers) so "
+                       "ManimGX can draw on the CPU")
+        out["manimgx"] = {"status": "slow", "fix": fix,
+                          "why": f"no GPU found, so it would draw on the CPU: about {slow} for an 8 minute video"}
+
+    # the voice: Kokoro + Whisper on the CPU
+    fix, v = [], p.get("voice") or {}
+    if ram < 1:
+        out["voice"] = {"status": "unavailable", "fix": [], "why": f"{ram} GB of RAM: Kokoro needs about 0.5 GB "
+                        "free with the int8 model, Whisper another 0.3 GB"}
+    elif not t["voice"]:
+        small = ram < 2 or p["free_disk_gb"] < 3
+        fix.append(("KOKORO_MODEL=int8 " if small else "") + f"{HERE / 'setup_voice.sh'}  (Kokoro and Whisper, "
+                   "about 1 GB)")
+        out["voice"] = {"status": "setup", "fix": fix, "why": "Kokoro is not set up yet"}
+    elif "error" in v:
+        out["voice"] = {"status": "unavailable", "fix": [f"Rerun {HERE / 'setup_voice.sh'}"],
+                        "why": f"Kokoro failed here: {v['error']}"}
+    elif v:
+        rtf = v["rtf"]
+        mins = rtf * 8
+        why = f"Kokoro speaks at {rtf:.2f}x real time here ({v.get('peak_mb')} MB): 8 minutes of narration in " \
+              f"about {mins:.0f} min, plus about half that again for the Whisper check"
+        status = "fast" if rtf <= 1 else "slow" if rtf <= 3 else "unavailable"
+        if status != "fast" and V.MODEL != "int8":
+            fix.append(f"KOKORO_MODEL=int8 {HERE / 'setup_voice.sh'}, then set KOKORO_MODEL=int8: about 25% faster")
+        out["voice"] = {"status": status, "why": why, "fix": fix}
+    else:
+        out["voice"] = {"status": "fast", "why": "Kokoro is set up (speed not measured)", "fix": []}
+    return out
+
+
+def advice(p, only=None):
+    """(blocking problems, things to know) for this machine, for one framework (and the voice) or all."""
+    fix, tune = [], []
+    if not p["tools"]["ffmpeg"]:
+        fix.append("Install ffmpeg (brew install ffmpeg / sudo apt install ffmpeg)")
+    if p["free_disk_gb"] < 3:
+        fix.append(f"{p['free_disk_gb']} GB free: the voice, the renderer and the video need about 3 GB")
+    for name, f in frameworks(p).items():
+        if only and name not in (only, "voice"):
+            continue
+        fix += f["fix"] if (only or name == "voice") else []
+        tune.append(f"{name}: {f['status']}: {f['why']}")
+    if p["render"] == "cpu" and only in (None, "manimgx"):
+        tune.append("manimgx on the CPU: always render with scripts/render.py (one-thread parallel segments, "
+                    "a format that fits the time budget), never a plain 1920x1080 at 60 fps manimgx render")
     return fix, tune
 
 
 def main():
-    p = profile()
-    fix, tune = advice(p)
+    only = sys.argv[sys.argv.index("--for") + 1] if "--for" in sys.argv else None
+    p = profile(probe="--no-probe" not in sys.argv)
+    fix, tune = advice(p, only)
     if "--json" in sys.argv:
-        print(json.dumps({**p, "fix": fix, "tune": tune}, indent=1))
+        print(json.dumps({**p, "frameworks": frameworks(p), "fix": fix, "tune": tune}, indent=1))
         return 1 if fix else 0
-    g = p["gpu"]
+    g, t = p["gpu"], p["tools"]
     print(f"OS        {p['os']} {p['arch']}")
     print(f"CPU       {p['cpu']['model']}, {p['cpu']['cores']} cores" + (", AVX2" if p["cpu"].get("avx2") else ""))
     print(f"RAM       {p['ram_gb']} GB    free disk {p['free_disk_gb']} GB")
-    print("GPU       " + (f"{g.get('name')} [{g.get('device_type')}, {g.get('backend')}]" if "error" not in g else g["error"][:160]))
-    print(f"renders   on the {p['render'].upper()}" if p["render"] != "none" else "renders   NOT POSSIBLE yet")
-    print("tools     " + ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in p["tools"].items()))
+    print("GPU       " + (f"{g.get('name')} [{g.get('device_type')}, {g.get('backend')}]" if "error" not in g
+                          else p["gpu_hint"] or "none found"))
+    print("tools     " + ", ".join(f"{k} {('v' + str(v)) if k == 'node' and v else 'ok' if v else 'MISSING'}"
+                                   for k, v in t.items()))
     for s in fix:
         print(f"FIX   {s}")
     for s in tune:

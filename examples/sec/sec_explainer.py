@@ -1,4 +1,4 @@
-"""Self-Evolving Curriculum (Chen et al., arXiv 2505.14970), explained in ManimGX with LFM3-Audio narration.
+"""Self-Evolving Curriculum (Chen et al., arXiv 2505.14970), explained in ManimGX with Kokoro narration.
 
     manimgx inspect sec_explainer.py      # layout report + storyboard
     manimgx render sec_explainer.py       # SECExplainer.mp4 beside this file
@@ -14,21 +14,23 @@ import manimgx as m
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent.parent / "scripts"))
-from lfm_voice import load_script, lfm_voice  # noqa: E402
+from kokoro_voice import kokoro_voice, load_script  # noqa: E402
 from stage import Pointer, chrome, say_synced  # noqa: E402
+from style import theme  # noqa: E402
 
 N = load_script(HERE / "narration.py").LINES
 
-m.config.background_color = "#111111"
-FG = "#FFFFFF"
-DIM = "#9A9A9A"
-ACCENT = "#FF8700"
-GOOD = "#5FD787"
-BAD = "#FF5F5F"
-BLUE = "#5FAFFF"
-PANEL = "#1C1C1C"
-LEVEL = ["#5FAFFF", "#FFD75F", "#D787FF"]  # level 1 (easy) .. 3 (hard)
-FONT = "Avenir Next"
+S = theme(HERE / "narration.py")  # scripts/style.py: PT Serif, gold on black (or light)
+m.config.background_color = S.bg
+FG = S.fg
+DIM = S.dim
+ACCENT = S.ink
+GOOD = S.good
+BAD = S.bad
+BLUE = S.blue
+PANEL = S.panel
+LEVEL = [S.blue, S.ink, "#D787FF"]  # level 1 (easy) .. 3 (hard)
+FONT = S.font
 
 
 # ---------- drawing helpers ----------
@@ -58,7 +60,7 @@ def card(text, color=FG, size=24, width=None, height=None, fill=PANEL):
 
 def dots(pattern, r=0.17, buff=0.16):
     """A row of rollout dots: 1 green (correct), 0 red (wrong), None grey."""
-    color = {1: GOOD, 0: BAD, None: "#444444"}
+    color = {1: GOOD, 0: BAD, None: S.dim}
     return m.VGroup(*[m.Circle(radius=r, stroke_width=0, fill_color=color[p], fill_opacity=1) for p in pattern]).arrange(
         m.RIGHT, buff=buff
     )
@@ -113,7 +115,7 @@ def simulate(steps=121, seed=0):
 
 
 class SECExplainer(m.Scene):
-    voice = staticmethod(lfm_voice(HERE / "narration.py"))
+    voice = staticmethod(kokoro_voice(HERE / "narration.py"))
 
     def construct(self) -> None:
         self.ptr = Pointer()

@@ -5,15 +5,24 @@
 </p>
 
 A [Claude Code](https://claude.com/claude-code) skill for narrated explainer videos.
-Ask Claude for "an animated explainer of this paper". It researches the source, writes
-a narration script, animates it with [ManimGX](https://pypi.org/project/manimgx/), and voices it
-locally with [LFM3-Audio](https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF) on llama.cpp. Every
-animation is timed to the words that describe it. The result is an MP4 with subtitles plus a
+Ask Claude for "an animated explainer of this paper". It researches the source, writes a narration
+script, plans what the viewer should see, picks the fastest framework that shows it well on your
+machine, animates it, and voices it locally with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M).
+Every animation is timed to the words that describe it. The result is an MP4 with subtitles plus a
 cheat sheet of the formulas and sources.
 
-Narration runs fully offline. The skill speaks each line up to three times, transcribes every
-take back with the same model, and keeps the take closest to the script. Lines that still
-come out wrong get flagged for a rewrite.
+- **Framework per video.** [Remotion](https://www.remotion.dev) (React, rendered in headless Chrome)
+  for diagrams, charts, text, code and static formulas: fast on any CPU, no GPU needed.
+  [ManimGX](https://pypi.org/project/manimgx/) when the video needs math animation (equations
+  transforming, shapes morphing, geometry) or 3D: best with a GPU.
+- **Hardware aware.** `scripts/pick.py` checks the machine first. When the hardware rules out the
+  framework that would do the job best, or makes it or the voice slow, the skill tells you, gives you
+  the options, and asks for feedback at hi@manoletre.com.
+- **Offline voice.** Kokoro (82M parameters) speaks each line, about 4 times faster than real time on
+  8 CPU cores; [faster-whisper](https://github.com/SYSTRAN/faster-whisper) transcribes it back, flags
+  lines that came out wrong, and times every word for the animations and subtitles.
+- **House style.** PT Serif, high contrast, the gold-on-black of [manoletre.com](https://manoletre.com),
+  in a dark (default) or light theme, chosen for all videos or for one.
 
 ## Examples
 
@@ -21,141 +30,147 @@ come out wrong get flagged for a rewrite.
 |---|---|
 | **[Search algorithms, compared](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4)** (7:58)<br>Linear, binary, jump, exponential, interpolation and hash table lookup: how each one works, what it costs, and when to pick it. Source and cheat sheet in [`examples/search-algorithms/`](examples/search-algorithms/). | **[Must-know data structures](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DataStructures.mp4)** (10:00)<br>Arrays, linked lists, stacks and queues, hash tables, binary search trees, heaps, graphs and tries: how each is laid out, what it costs, and how to choose. Source and cheat sheet in [`examples/data-structures/`](examples/data-structures/). |
 
-Both were made from a one-line request, for interview prep.
+Both were made from a one-line request, for interview prep, with ManimGX and the earlier voice and
+colors; their scenes now use Kokoro and the house style. [`examples/hash-tables/`](examples/hash-tables/)
+is a short Remotion video in the current style (1:18, rendered at 1080p30 in under a minute on an
+8 vCPU cloud VM with no GPU), and [`examples/sec/`](examples/sec/) an 11 minute ManimGX video with
+real math (*Self-Evolving Curriculum for LLM Reasoning*, Chen et al., 2025).
+
+## How it decides
+
+1. **Visualization first.** Claude plans what is on screen in each section and names the needs:
+   `text`, `diagram`, `chart`, `plot`, `formula`, `code`, `ui`, `image`, `timeline`,
+   `math-animation`, `3d`.
+2. **Hardware second.** `python3 scripts/pick.py diagram chart formula` runs `scripts/hardware.py`
+   (CPU, RAM, disk, GPU, Node, ManimGX, a few seconds of voice speed test).
+3. **Framework third.** It picks the first framework, fastest first, that does every need well and
+   runs here, and prints `FIX` lines (things to install) and `NOTICE` lines (hardware limits, which
+   Claude passes on to you with the feedback address).
+
+| framework | set up by the skill | good for | weak at | hardware | speed |
+|---|---|---|---|---|---|
+| **Remotion** | yes | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
+| **ManimGX** | yes | math: equations transforming, function graphs, geometry, linear algebra, 3D | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
+| Motion Canvas | no | Manim-style vector tweening, code, LaTeX | few agent examples | CPU (browser) | close to Remotion |
+| Manim Community | no | the same math, the most examples online | slow at 1080p, no GPU path | CPU (Cairo) | minutes per minute of video |
+| three.js (`@remotion/three`) | no | 3D that isn't math: models, molecules, scenes | needs WebGL; slow on the CPU | a GPU | GPU fast, CPU slow |
+| Blender | no | photoreal 3D, physics | slow to write and render | a GPU | minutes per second on the CPU |
+
+Timings are measured on an 8 vCPU cloud VM with no GPU: the same 8 minute explainer took 4.6 minutes
+in Remotion at 1920x1080, 30 fps, and 41 minutes in ManimGX (which there draws on the CPU). On a
+MacBook's GPU, ManimGX renders it in about 10 minutes.
 
 ## Install
 
-You need macOS (Apple silicon or Intel) or Linux (x64 or arm64), [Claude Code](https://claude.com/claude-code),
-Python 3.9 or newer, and about 3 GB of free disk space. Setup takes about 10 minutes, most of it
-downloading the voice model.
+You need macOS or Linux (x64 or arm64), [Claude Code](https://claude.com/claude-code), Python 3.9 or
+newer, [uv](https://docs.astral.sh/uv/), ffmpeg, and for Remotion videos Node.js 18 or newer. Setup
+takes about 5 minutes.
 
 ### Hardware
 
 | | Minimum | Comfortable |
 |---|---|---|
-| CPU | 4 cores (x64 with AVX2, or arm64) | 8 cores or Apple silicon |
-| RAM | 6 GB (4 GB with the `Q4_K_M` voice model) | 16 GB |
-| Disk | 4 GB free | 10 GB free |
-| GPU | none: Mesa's lavapipe draws on the CPU, at 720p30 or less | any GPU with Metal or Vulkan, for 1080p60 |
+| CPU | 2 cores (x64 or arm64) | 8 cores or Apple silicon |
+| RAM | 2 GB (Remotion with one Chrome worker, the int8 voice) | 8 GB or more |
+| Disk | 3 GB free | 10 GB free |
+| GPU | none, for Remotion videos | a Metal or Vulkan GPU, for ManimGX at 1080p60 |
 
-The voice runs on the CPU everywhere (about 8 s per take on 8 cores). Rendering is what needs a GPU:
-[ManimGX](https://pypi.org/project/manimgx/) draws every frame through wgpu (Metal on macOS, Vulkan on
-Linux). On a Linux box with no GPU driver (most cloud VMs and containers) it fails with `no GPU adapter`
-until you install Mesa's Vulkan drivers (`sudo apt install mesa-vulkan-drivers`); it then draws on the
-CPU, about 0.15 s per changed frame at 1280x720 and 0.3 s at 1920x1080 on 8 x64 cores. That is fine
-at 720p30, but the scene's default 1920x1080 at 60 fps renders about 20 times slower than real time:
-hours for an 8 minute video. `scripts/render.py` measures this on your machine and picks the format
-that finishes in time; `scripts/hardware.py` tells you which case you are in and what to fix.
+The voice runs on the CPU everywhere: about 0.25 s of work per second of speech on 8 cores and about
+real time on one, in 650 MB of RAM (400 MB with `KOKORO_MODEL=int8`), plus about half that again for
+the Whisper check. Remotion renders on the CPU too, so it needs no GPU; more cores render
+proportionally faster.
 
-On the CPU, lavapipe's worker threads and ManimGX's (rayon) race, so frames come out garbled at random:
-black patches over text, boxes missing, different on every run. `render.py` therefore pins both to one
-thread (`LP_NUM_THREADS=1 RAYON_NUM_THREADS=1`), which draws every frame right but about 4.5 times
-slower per process, and renders the video as one segment per core in parallel, split so each draws as
-many changing frames, then joins them without re-encoding and adds the sound and subtitles.
+ManimGX draws every frame through wgpu (Metal on macOS, Vulkan on Linux). On a Linux box with no GPU
+driver (most cloud VMs and containers) it fails with `no GPU adapter` until you install Mesa's Vulkan
+drivers (`sudo apt install mesa-vulkan-drivers`); it then draws on the CPU, about 1.2 s per changed
+1080p frame per process. On the CPU, lavapipe's and ManimGX's worker threads race and garble frames at
+random, so `scripts/render.py` pins every process to one thread and renders the video as one segment
+per core in parallel; it times your scene's real frames and picks the format that finishes within a
+10 minute budget (on an 8 vCPU VM, about 960x540), listing what better formats would cost. For full
+quality without a local GPU, render on a machine that has one (a small rented cloud GPU is plenty, as
+long as `vulkaninfo --summary` lists it), or pick Remotion when the video doesn't need math animation.
 
-For example, the 8 minute awordaday explainer on an 8 vCPU cloud VM with no GPU (7 parallel segments):
-1920x1080 at 30 fps took 41 minutes and 854x480 at 15 fps took 6; 1080p60 would take well over an hour.
-The same video renders in about 10 minutes on a MacBook's GPU. So `render.py` defaults to a 10 minute
-budget, which on such a VM means about 960x540, and its plan lists what better formats would cost
-(`--budget` raises the limit). For full quality without a local GPU, render on any machine that has
-one: a small rented cloud GPU (a T4, or a consumer card) is plenty, as long as Vulkan sees it
-(`vulkaninfo --summary` lists the GPU, not only llvmpipe).
-
-### 1. Install ffmpeg and uv
-
-[uv](https://docs.astral.sh/uv/) installs ManimGX; ffmpeg muxes the audio and video.
+### 1. Install ffmpeg, uv and Node
 
 On macOS, with [Homebrew](https://brew.sh):
 
 ```bash
-brew install ffmpeg uv
+brew install ffmpeg uv node
 ```
 
-On Debian or Ubuntu:
+On Debian or Ubuntu (Node from [nodejs.org](https://nodejs.org) or nvm if your distribution's is
+older than 18):
 
 ```bash
-sudo apt install ffmpeg python3 curl
-```
-
-```bash
+sudo apt install ffmpeg python3 curl nodejs npm
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 ### 2. Clone the skill into Claude Code's skills folder
 
-Claude Code finds skills in `~/.claude/skills/`, so clone it there:
-
 ```bash
 git clone https://github.com/manoletre/explainer-video ~/.claude/skills/explainer-video
 ```
 
-### 3. Install ManimGX
+### 3. Set up the voice
 
 ```bash
-uv tool install manimgx
+~/.claude/skills/explainer-video/scripts/setup_voice.sh
 ```
 
-Check that it's on your `PATH`:
+This makes a Python environment with Kokoro and faster-whisper in `~/.cache/explainer-video/`, downloads
+Kokoro's model (325 MB; `KOKORO_MODEL=int8` fetches the 92 MB one) and Whisper's (150 MB), and speaks
+and transcribes a test sentence: `voice ok: spoke 1.7 s of audio in 1.7 s; heard: Hello from Explainer Video.`
 
-```bash
-manimgx --version
-```
-
-If the shell says `command not found`, run `uv tool update-shell`, open a new terminal, and check again.
-
-### 4. Download the voice model and llama.cpp
-
-```bash
-~/.claude/skills/explainer-video/scripts/fetch_model.sh
-```
-
-This downloads LFM3-Audio-2B (Q8_0 GGUF plus its audio projector, about 2.2 GB) and a prebuilt
-llama.cpp release (`b11985`) for your platform into `~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF/`.
-That's also where LM Studio keeps the model, so an existing LM Studio download is reused. Running the
-script again skips whatever is already there.
-
-### 5. Check the hardware
+### 4. Check the machine
 
 ```bash
 python3 ~/.claude/skills/explainer-video/scripts/hardware.py
 ```
 
-It prints the CPU, RAM, disk and the adapter ManimGX will draw with, then a `FIX` line for anything
-that would stop a video (on a Linux VM with no GPU: `sudo apt install mesa-vulkan-drivers`) and a
-`NOTE` for what to change on this machine.
+It prints the CPU, RAM, disk, GPU and tools, then each framework's and the voice's status here (`fast`,
+`slow`, `setup`, `unavailable`) with a `FIX` line for anything to install. `pick.py --list` prints the
+framework table.
 
-### 6. Check the voice
+### 5. Optional: ManimGX, for math and 3D videos
 
 ```bash
-cd ~/.claude/skills/explainer-video && python3 -c "import sys; sys.path.insert(0, 'scripts'); import lfm_audio as L; L.tts('Hello from explainer video.', '/tmp/hello.wav'); print(L.asr('/tmp/hello.wav'))"
+uv tool install manimgx
+~/.claude/skills/explainer-video/scripts/setup_fonts.sh
 ```
 
-It speaks the sentence into `/tmp/hello.wav`, transcribes it back, and prints
-`Hello from Explainer Video.` (about 7 s on an M-series Mac). Play the file to hear the voice.
+`setup_fonts.sh` installs PT Serif and JetBrains Mono for the system, which ManimGX draws text with
+(Remotion bundles its fonts). Scenes that typeset formulas with `m.MathTex` also need LaTeX: MacTeX on
+macOS (`brew install --cask mactex-no-gui`) or TeX Live on Linux. On Linux without a GPU, also
+`sudo apt install mesa-vulkan-drivers`.
 
-### 7. Start Claude Code
+### 6. Start Claude Code
 
 Open a new Claude Code session (skills load at startup) and ask for a video, or type `/explainer-video`.
 
-### Optional: LaTeX
-
-Scenes that typeset formulas with `m.MathTex` need a LaTeX install: MacTeX on macOS
-(`brew install --cask mactex-no-gui`) or TeX Live on Linux. Scenes that use only `m.Text`, like
-the search algorithms example, don't.
-
 ### Settings
 
-All optional, set as environment variables before running Claude Code or the scripts:
+All optional, set as environment variables:
 
 | Variable | Default | What it changes |
 |---|---|---|
-| `LFM_AUDIO_CKPT` | `~/.lmstudio/models/LiquidAI/LFM3-Audio-2B-GGUF` | Where the model and llama.cpp live |
-| `LFM_LLAMA_BUILD` | `b11985` | llama.cpp release to download and run (LFM3-Audio needs `b11960` or newer) |
-| `LFM_AUDIO_RUNNER` | `$LFM_AUDIO_CKPT/runner/$LFM_LLAMA_BUILD` | A folder with your own `llama-tts` and `llama-mtmd-cli` |
-| `LFM_AUDIO_QUANT` | `Q8_0` | Model quantization to download and use |
-| `LFM_LLAMA_FLAVOR` | (CPU build) | `vulkan` fetches and uses llama.cpp's Vulkan build on Linux, to voice on a GPU |
+| `EXPLAINER_THEME` | the saved default, else `dark` | `light` or `dark` for every video (`THEME` in a video's `narration.py` wins) |
+| `EXPLAINER_HOME` | `~/.cache/explainer-video` | Where the voice environment and models live |
+| `KOKORO_MODEL` | `fp32` | `int8`: the 92 MB model, for machines with little RAM or disk |
+| `EXPLAINER_ASR_MODEL` | `base.en` (English), `base` | The Whisper model that checks and times the narration |
 
-On an M-series Mac a line of narration takes about 3.5 s to speak and 3.5 s to check.
+## Style
+
+PT Serif for text, JetBrains Mono for code, high contrast, gold `#FFD700` as the one accent, from
+manoletre.com. Two themes, defined in `scripts/style.py`:
+
+- **dark** (default): black background, white text, gold highlights.
+- **light**: white background, black text, gold highlight fills with black text, dark gold for accent
+  text and lines.
+
+For every video: `python3 scripts/style.py light` (saved in `~/.config/explainer-video/config.json`;
+`style.py dark` switches back). For one video: `THEME = "light"` in its `narration.py`. Or just tell
+Claude which you prefer.
 
 ## Use
 
@@ -163,38 +178,51 @@ In Claude Code:
 
 > Make an explainer video of arXiv 2505.14970 and how it applies to this project.
 
-The skill (`SKILL.md`) walks Claude through research, outline, narration, voice generation,
-layout inspection and render. An 8 minute video takes about half an hour end to end.
+The skill (`SKILL.md`) walks Claude through research, outline, the visualization plan and framework
+choice, narration, voice, building and checking the scene, and render. Expect about 20–30 minutes end
+to end for an 8 minute Remotion video.
 
-To rebuild an example yourself, voice it and then render it:
-
-```bash
-cd ~/.claude/skills/explainer-video && python3 scripts/make_narration.py examples/search-algorithms/narration.py
-```
+To rebuild the Remotion example yourself:
 
 ```bash
-cd ~/.claude/skills/explainer-video && python3 scripts/render.py examples/search-algorithms/search_algorithms.py
+cd ~/.claude/skills/explainer-video
+python3 scripts/make_narration.py examples/hash-tables/narration.py
+python3 scripts/remotion.py new examples/hash-tables      # installs the project
+python3 scripts/remotion.py check examples/hash-tables    # storyboard, layout and sync reports
+python3 scripts/remotion.py render examples/hash-tables   # examples/hash-tables/hash-tables.mp4 and .srt
 ```
 
-`render.py` prints its plan (for example `plan: 1280x720 at 30 fps, about 25 min` on a CPU-only
-VM), then progress every 20 s. On a machine with a GPU, `manimgx render <scene>.py` works as well.
+and a ManimGX example:
 
-The MP4 and its `.srt` subtitles are written next to the scene file.
+```bash
+python3 scripts/make_narration.py examples/search-algorithms/narration.py
+python3 scripts/render.py examples/search-algorithms/search_algorithms.py
+```
 
 ## What's inside
 
 - `SKILL.md`: the instructions Claude follows.
-- `scripts/lfm_audio.py`: TTS, ASR and word error rate on top of llama.cpp's `llama-tts` and `llama-mtmd-cli`.
-- `scripts/make_narration.py`: generates and checks every narration clip; writes `audio/report.json`.
-- `scripts/lfm_voice.py`: plugs those clips into a ManimGX scene as its `voice`.
-- `scripts/stage.py`: a laser pointer the narration can move, and a check that flags speech over an empty or frozen screen.
-- `scripts/fetch_model.sh`: downloads the model and a llama.cpp release that runs it.
-- `scripts/hardware.py`: what this machine can render on (GPU or CPU), and what to fix first.
-- `scripts/render.py`: renders at the best resolution and frame rate that finish within a time budget, with progress.
-- `examples/search-algorithms/`: the 8 minute search algorithms video: scene, narration and cheat sheet.
-- `examples/data-structures/`: the 10 minute data structures video: scene, narration and cheat sheet.
-- `examples/sec/`: an 11 minute video explaining *Self-Evolving Curriculum for LLM Reasoning*
-  (Chen et al., 2025).
+- `scripts/pick.py`: the needs, the framework table, and the choice for this machine, with notices.
+- `scripts/hardware.py`: what this machine has, and each framework's and the voice's status on it.
+- `scripts/voice.py`: Kokoro TTS, Whisper ASR with word times, word error rate.
+- `scripts/setup_voice.sh`: sets up the voice environment and models.
+- `scripts/make_narration.py`: speaks and checks every line; writes `audio/<key>.wav`, `report.json`, `words.json`.
+- `scripts/style.py`: the themes (PT Serif, manoletre.com colors, dark and light) and the saved default.
+- `scripts/remotion.py`: Remotion projects: `new`, `timeline` (narration times and track), `check`, `render`.
+- `templates/remotion/`: the Remotion project it copies: `src/kit.tsx` (sections, boxes, text, formulas,
+  arrows, charts, plots, code, pictures, the laser pointer, captions, the layout check) and `tools/`
+  (storyboard and budgeted render).
+- `scripts/render.py`: ManimGX renders at the best format that finishes within a time budget, with progress.
+- `scripts/kokoro_voice.py`: the narration as a ManimGX scene's `voice` (`lfm_voice.py` keeps old scenes working).
+- `scripts/stage.py`: ManimGX's laser pointer and the check for speech over an empty or frozen screen.
+- `scripts/setup_fonts.sh`: PT Serif and JetBrains Mono for ManimGX.
+- `examples/hash-tables/`: a short Remotion explainer: narration and `remotion/src/Video.tsx`.
+- `examples/search-algorithms/`, `examples/data-structures/`, `examples/sec/`: ManimGX explainers.
+
+## Feedback
+
+If the skill couldn't use the right framework or the voice on your hardware, or anything else got in
+the way, write to hi@manoletre.com.
 
 ## License
 

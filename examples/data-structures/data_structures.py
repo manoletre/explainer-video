@@ -1,4 +1,4 @@
-"""Must-know data structures, for interview prep. ManimGX + LFM3-Audio narration.
+"""Must-know data structures, for interview prep. ManimGX + Kokoro narration.
 
     manimgx inspect data_structures.py
     manimgx render data_structures.py
@@ -12,21 +12,23 @@ import manimgx as m
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE.parent.parent / "scripts"))
-from lfm_voice import load_script, lfm_voice  # noqa: E402
+from kokoro_voice import kokoro_voice, load_script  # noqa: E402
 from stage import Pointer, chrome, hold, say_synced  # noqa: E402
+from style import theme  # noqa: E402
 
 N = load_script(HERE / "narration.py").LINES
 
-m.config.background_color = "#111111"
-FG = "#FFFFFF"
-DIM = "#9A9A9A"
-ACCENT = "#FF8700"
-GOOD = "#5FD787"
-BAD = "#FF5F5F"
-BLUE = "#5FAFFF"
-PANEL = "#1C1C1C"
-FONT = "Avenir Next"
-MONO = "Menlo"
+S = theme(HERE / "narration.py")  # scripts/style.py: PT Serif, gold on black (or light)
+m.config.background_color = S.bg
+FG = S.fg
+DIM = S.dim
+ACCENT = S.ink
+GOOD = S.good
+BAD = S.bad
+BLUE = S.blue
+PANEL = S.panel
+FONT = S.font
+MONO = S.mono
 
 
 # ---------- drawing helpers ----------
@@ -93,7 +95,7 @@ def chip(s, color=BLUE, size=20):
 
 
 class DataStructures(m.Scene):
-    voice = staticmethod(lfm_voice(HERE / "narration.py"))
+    voice = staticmethod(kokoro_voice(HERE / "narration.py"))
 
     def construct(self) -> None:
         self.ptr = Pointer()
