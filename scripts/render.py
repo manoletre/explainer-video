@@ -267,6 +267,8 @@ def render_cpu(file, name, w, h, fps, preset, crf, c):
     if (tmp / "subs.srt").exists():
         shutil.copy(tmp / "subs.srt", video.with_suffix(".srt"))
         print(f"subtitles: {video.with_suffix('.srt')}", flush=True)
+    else:
+        video.with_suffix(".srt").unlink(missing_ok=True)  # a previous render's, no longer true
     took = time.perf_counter() - start
     print(f"{video}  {w}x{h} at {fps} fps, {video.stat().st_size / 1e6:.1f} MB (rendered in {took / 60:.1f} min)",
           flush=True)
