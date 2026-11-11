@@ -25,7 +25,9 @@ fs.mkdirSync(out, {recursive: true});
 await ensureBrowser();
 const serveUrl = await bundle({entryPoint: path.resolve('src/index.tsx')});
 const inputProps = {check: true};
-const browser = await openBrowser('chrome');
+const gl = process.env.EXPLAINER_GL || null;
+const chromiumOptions = gl ? {gl} : {};
+const browser = await openBrowser('chrome', {chromiumOptions});
 const composition = await selectComposition({serveUrl, id: 'Explainer', inputProps, puppeteerInstance: browser});
 const used = new Set();
 const frames = [];
@@ -35,7 +37,7 @@ for (const t of times) {
   const logs = [];
   const file = path.join(out, `${String(i++).padStart(3, '0')}_${t.toFixed(2)}s.png`);
   await renderStill({
-    composition, serveUrl, inputProps, frame, output: file, scale: 0.5, puppeteerInstance: browser,
+    composition, serveUrl, inputProps, frame, output: file, scale: 0.5, puppeteerInstance: browser, chromiumOptions,
     onBrowserLog: log => { if (log.text.startsWith('EXPLAINER_CHECK ')) logs.push(JSON.parse(log.text.slice(16))); },
   });
   const last = logs[logs.length - 1] || {used: [], problems: ['the layout check did not run']};
