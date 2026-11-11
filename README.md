@@ -4,17 +4,20 @@
   <img src="assets/logo.png" alt="Explainer Video logo: a white integral sign beside a yellow play button" width="240">
 </p>
 
-A [Claude Code](https://claude.com/claude-code) skill for narrated explainer videos.
-Ask Claude for "an animated explainer of this paper". It researches the source, writes a narration
+A skill for narrated explainer videos, for [Claude Code](https://claude.com/claude-code) and Devin.
+Ask Claude (or Devin) for "an animated explainer of this paper". It researches the source, writes a narration
 script, plans what the viewer should see, picks the fastest framework that shows it well on your
 machine, animates it, and voices it locally with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M).
 Every animation is timed to the words that describe it. The result is an MP4 with subtitles plus a
 cheat sheet of the formulas and sources.
 
-- **Framework per video.** [Remotion](https://www.remotion.dev) (React, rendered in headless Chrome)
-  for diagrams, charts, text, code and static formulas: fast on any CPU, no GPU needed.
-  [ManimGX](https://pypi.org/project/manimgx/) when the video needs math animation (equations
-  transforming, shapes morphing, geometry) or 3D: best with a GPU.
+- **Framework per video, six to pick from.** [Remotion](https://www.remotion.dev) (React, rendered
+  in headless Chrome) for diagrams, charts, text, code and static formulas: fast on any CPU, no GPU
+  needed, and the right choice for most explainers. [Motion Canvas](https://motioncanvas.io) for
+  shapes and arrows tweening Manim-style; three.js (inside Remotion) for 3D objects;
+  [ManimGX](https://pypi.org/project/manimgx/) for math animation and 3D math, best with a GPU;
+  [Manim Community](https://www.manim.community) for the same 2D math on a CPU; and
+  [Blender](https://www.blender.org) when a shot has to look real.
 - **Hardware aware.** `scripts/pick.py` checks the machine first. When the hardware rules out the
   framework that would do the job best, or makes it or the voice slow, the skill tells you, gives you
   the options, and asks for feedback at hi@manoletre.com.
@@ -31,14 +34,19 @@ cheat sheet of the formulas and sources.
 | **[Search algorithms, compared](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/SearchAlgorithms.mp4)** (7:58)<br>Linear, binary, jump, exponential, interpolation and hash table lookup: how each one works, what it costs, and when to pick it. Source and cheat sheet in [`examples/search-algorithms/`](examples/search-algorithms/). | **[Must-know data structures](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/DataStructures.mp4)** (10:00)<br>Arrays, linked lists, stacks and queues, hash tables, binary search trees, heaps, graphs and tries: how each is laid out, what it costs, and how to choose. Source and cheat sheet in [`examples/data-structures/`](examples/data-structures/). |
 
 Both were made from a one-line request, for interview prep, with ManimGX and the earlier voice and
-colors; their scenes now use Kokoro and the house style. [`examples/hash-tables/`](examples/hash-tables/)
-is a short Remotion video in the current style (1:18, rendered at 1080p30 in under a minute on an
-8 vCPU cloud VM with no GPU), and [`examples/sec/`](examples/sec/) an 11 minute ManimGX video with
-real math (*Self-Evolving Curriculum for LLM Reasoning*, Chen et al., 2025). One short example per
-other framework, each rendered at 1080p30 on the same VM: [`examples/water-3d/`](examples/water-3d/)
-(three.js in Remotion), [`examples/linked-list-mc/`](examples/linked-list-mc/) (Motion Canvas),
-[`examples/gradient-descent-ce/`](examples/gradient-descent-ce/) (Manim Community) and
-[`examples/water-blender/`](examples/water-blender/) (Blender).
+colors; their scenes now use Kokoro and the house style. [`examples/sec/`](examples/sec/) is an 11
+minute ManimGX video with real math (*Self-Evolving Curriculum for LLM Reasoning*, Chen et al., 2025).
+
+One short example per framework in the current style, all voiced by Kokoro and rendered on an 8 vCPU
+cloud VM with no GPU (render times in brackets):
+
+| [![Hash tables, Remotion](docs/hash-tables.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/HashTables.mp4) | [![Water molecule, three.js](docs/water-3d.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/Water3D.mp4) | [![Linked list, Motion Canvas](docs/linked-list-mc.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/LinkedListMotionCanvas.mp4) |
+|---|---|---|
+| **[Hash tables](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/HashTables.mp4)** (1:18)<br>Remotion: boxes, arrows, formulas, the laser pointer. 1080p30 [51 s]. [`examples/hash-tables/`](examples/hash-tables/) | **[A water molecule](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/Water3D.mp4)** (0:20)<br>three.js inside Remotion: a 3D model with a camera move and 2D labels. 1080p30 [39 s]. [`examples/water-3d/`](examples/water-3d/) | **[Inserting into a linked list](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/LinkedListMotionCanvas.mp4)** (0:18)<br>Motion Canvas: nodes and pointers re-linking. 1080p30 [14 s]. [`examples/linked-list-mc/`](examples/linked-list-mc/) |
+
+| [![Gradient descent, Manim Community](docs/gradient-descent-ce.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/GradientDescentManimCE.mp4) | [![Water molecule, Blender](docs/water-blender.jpg)](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/WaterBlender.mp4) |
+|---|---|
+| **[Gradient descent](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/GradientDescentManimCE.mp4)** (0:30)<br>Manim Community: a curve, a point stepping down it, the update rule transforming. 1080p30 [12 s]. [`examples/gradient-descent-ce/`](examples/gradient-descent-ce/) | **[A water molecule, rendered](https://github.com/manoletre/explainer-video/releases/download/v0.1.0/WaterBlender.mp4)** (0:20)<br>Blender (Cycles on the CPU): lighting, materials, a camera move. 960x540 at 30 fps [15 min; a GPU is many times faster]. [`examples/water-blender/`](examples/water-blender/) |
 
 ## How it decides
 
@@ -205,12 +213,24 @@ python3 scripts/remotion.py check examples/hash-tables    # storyboard, layout a
 python3 scripts/remotion.py render examples/hash-tables   # examples/hash-tables/hash-tables.mp4 and .srt
 ```
 
-and a ManimGX example:
+a ManimGX example:
 
 ```bash
 python3 scripts/make_narration.py examples/search-algorithms/narration.py
 python3 scripts/render.py examples/search-algorithms/search_algorithms.py
 ```
+
+and the others, each after its `make_narration.py`:
+
+```bash
+python3 scripts/remotion.py new examples/water-3d && python3 scripts/remotion.py render examples/water-3d
+python3 scripts/motion_canvas.py new examples/linked-list-mc && python3 scripts/motion_canvas.py render examples/linked-list-mc
+python3 scripts/manim_ce.py render examples/gradient-descent-ce/gradient_descent.py
+python3 scripts/blender.py render examples/water-blender/water.py
+```
+
+Each framework's `check` (same arguments as `render`) writes the storyboard, `layout_report.txt` and
+`sync_report.txt` first.
 
 ## What's inside
 
@@ -235,6 +255,9 @@ python3 scripts/render.py examples/search-algorithms/search_algorithms.py
 - `scripts/stage.py`: ManimGX's laser pointer and the check for speech over an empty or frozen screen.
 - `scripts/setup_fonts.sh`: PT Serif and JetBrains Mono for ManimGX.
 - `examples/hash-tables/`: a short Remotion explainer: narration and `remotion/src/Video.tsx`.
+- `examples/water-3d/` (three.js), `examples/linked-list-mc/` (Motion Canvas),
+  `examples/gradient-descent-ce/` (Manim Community), `examples/water-blender/` (Blender): one short
+  explainer per framework.
 - `examples/search-algorithms/`, `examples/data-structures/`, `examples/sec/`: ManimGX explainers.
 
 ## Feedback

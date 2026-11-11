@@ -8,7 +8,9 @@ description: Make a narrated explainer video (MP4) about a paper, method or conc
 A good explainer: one idea per beat, every animation timed to the words that describe it, worked
 examples with real numbers, high-contrast frames in the house style, and, when the user has a project
 the idea relates to, a closing part about how it applies there. References in this skill:
-`examples/hash-tables/` (Remotion, 1.3 min) and `examples/sec/` (ManimGX, 11 min, real math).
+`examples/hash-tables/` (Remotion, 1.3 min), `examples/sec/` (ManimGX, 11 min, real math), and
+one short video per other framework: `examples/water-3d/` (three.js), `examples/linked-list-mc/`
+(Motion Canvas), `examples/gradient-descent-ce/` (Manim Community), `examples/water-blender/` (Blender).
 
 ## The order of decisions
 
@@ -87,7 +89,7 @@ The viewer must always see what the narrator is talking about. Two failures to a
   refer to something already on screen, point at it (the laser `Pointer`) or highlight it (`hot`).
 
 Silence is fine: after a line, a pause that lets a point land is good pacing. The rule is about speech.
-Both frameworks check this for you (`sync_report.txt`).
+Every framework's check reports it (`sync_report.txt`).
 
 ## Steps
 
@@ -114,7 +116,7 @@ Both frameworks check this for you (`sync_report.txt`).
    in plainer spoken words and redo it with `make_narration.py <dir>/narration.py key1 key2`. Kokoro is
    deterministic, so rerunning an unchanged line gives the same take. Number-heavy lines and names get
    false flags (Whisper writes "Ada" as "ADA"), so read the transcript before rewriting.
-5. **Build the video** in the chosen framework: *Remotion* or *ManimGX* below.
+5. **Build the video** in the chosen framework (its section below).
 6. **Check layout and sync** until both reports are empty, looking at every storyboard image.
 7. **Render** within the time budget (default 10 minutes), telling the user the format it chose.
 8. **Deliver** the MP4, the `.srt` and the cheat sheet, with the length, a one-paragraph summary, the
