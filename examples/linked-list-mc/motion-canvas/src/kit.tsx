@@ -41,7 +41,11 @@ export function* section(view: Node, key: string): ThreadGenerator {
   const sec = TL.sections.find((s: any) => s.first === key);
   if (!sec) throw new Error(`no section starts at line "${key}": add it to SECTIONS in narration.py`);
   const old = view.children();
-  if (old.length) { yield* all(...old.map(n => n.opacity(0, 0.4))); old.forEach(n => n.remove()); }
+  if (old.length) {
+    yield* until(sec.start - 0.4);
+    yield* all(...old.map(n => n.opacity(0, 0.4)));
+    old.forEach(n => n.remove());
+  }
   yield* until(sec.start);
   const [num, ...rest] = sec.title.split(' · ');
   const header = <Txt x={-960 + 80} y={-540 + 76} offset={[-1, 0]} fontFamily={C.font} fontWeight={700} fontSize={40}

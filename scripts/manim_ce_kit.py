@@ -84,6 +84,7 @@ class Explainer(mn.Scene):
         if sec is None:
             raise KeyError(f"no section starts at line {key}: add it to SECTIONS in narration.py")
         if self.mobjects:
+            self.until(sec["start"] - 0.4)
             self.play(*[mn.FadeOut(m) for m in self.mobjects], run_time=0.4)
         self.until(sec["start"])
         num, _, rest = sec["title"].partition(" · ")
