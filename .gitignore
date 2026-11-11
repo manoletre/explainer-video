@@ -12,3 +12,8 @@ storyboard/
 layout_report.txt
 src/timeline.json
 public/narration.wav
+manim-ce/
+blender/
+output/
+timing.json
+check.json
