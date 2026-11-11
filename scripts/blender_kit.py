@@ -178,7 +178,7 @@ def _layout(sc, t):
     from mathutils import Vector
     boxes, problems = [], []
     for obj in sc.objects:
-        if obj.type not in ("MESH", "FONT") or obj.hide_render or min(obj.matrix_world.to_scale()) < 0.05:
+        if obj.type not in ("MESH", "FONT") or obj.hide_render or max(obj.matrix_world.to_scale()) < 0.05:
             continue
         pts = [world_to_camera_view(sc, sc.camera, obj.matrix_world @ Vector(c)) for c in obj.bound_box]
         if min(p.z for p in pts) <= 0:
