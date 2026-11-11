@@ -93,6 +93,7 @@ def render(scene, a):
                     str(frames / "frame_%04d.png"), "-i", str(d / "blender" / "narration.wav"), "-c:v", "libx264",
                     "-pix_fmt", "yuv420p", "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-shortest", str(video)],
                    check=True)
+    shutil.rmtree(frames, ignore_errors=True)
     TL.srt(tl, video.with_suffix(".srt"))
     print(f"video: {video}  {size(pick)} at {tl['fps']} fps (rendered in {took / 60:.1f} min)\n"
           f"subtitles: {video.with_suffix('.srt')}")
