@@ -1,5 +1,5 @@
 // node tools/render.mjs <name> [scale] [fps]: renders every frame into output/<name>/NNNNNN.png and prints
-// a JSON line {frames, seconds, used} (used: the [brackets] the scene animated).
+// a JSON line {frames, seconds, used, layout} (used: the [brackets] the scene animated; layout: overlaps and off-frame).
 import {createServer} from 'vite';
 import puppeteer from 'puppeteer';
 const [name = 'video', scale = '1', fps = ''] = process.argv.slice(2);
@@ -22,7 +22,8 @@ await page.evaluate('window.__start()');
 await page.waitForFunction('window.__done !== undefined', {timeout: 0, polling: 500});
 clearInterval(tick);
 const out = {result: await page.evaluate('window.__done'), frames: await page.evaluate('window.__frames'),
-  seconds: (Date.now() - t) / 1000, used: await page.evaluate('window.__used || []')};
+  seconds: (Date.now() - t) / 1000, used: await page.evaluate('window.__used || []'),
+  layout: await page.evaluate('window.__layout || []')};
 console.log(JSON.stringify(out));
 await browser.close();
 await server.close();

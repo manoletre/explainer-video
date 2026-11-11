@@ -90,7 +90,7 @@ def check(d):
         shutil.copy(frames[k], sb / f"{i:03d}_{t:.2f}s.png")
     sheets = TL.sheets(sb)
     print(f"preview: {out['frames']} frames at half size in {out['seconds']:.0f} s; {len(sheets)} sheets in {sb}")
-    return TL.check_reports(d, tl, out["used"], [])
+    return TL.check_reports(d, tl, out["used"], out.get("layout", []))
 
 
 def render(d, a):
