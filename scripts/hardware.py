@@ -187,9 +187,17 @@ def profile(where=".", probe=True):
             "latex": bool(shutil.which("latex") or shutil.which("pdflatex")),
             "pt_serif": font_installed(),
             "voice": voice_ready,
+            "manim_ce": (V.HOME / "manim-ce" / "bin" / "manim").exists(),
+            "blender": _blender(),
+            "dvisvgm": bool(shutil.which("dvisvgm")),
         },
         "voice": voice_probe() if probe and voice_ready else None,
     }
+
+
+def _blender():
+    import blender
+    return blender.blender_bin()
 
 
 def _scale(minutes_8cores, cores):
@@ -253,6 +261,51 @@ def frameworks(p):
                        "ManimGX can draw on the CPU")
         out["manimgx"] = {"status": "slow", "fix": fix,
                           "why": f"no GPU found, so it would draw on the CPU: about {slow} for an 8 minute video"}
+
+    cores, gpu_name = p["cpu"]["cores"], p["gpu_hint"] or (p["gpu"].get("name") if p["render"] == "gpu" else None)
+    web = out["remotion"]
+
+    # three.js: Remotion with WebGL (ANGLE on a GPU, SwiftShader on the CPU)
+    if web["status"] == "unavailable":
+        out["three"] = dict(web)
+    elif gpu_name:
+        out["three"] = {"status": web["status"], "fix": web["fix"], "why": f"WebGL on the GPU ({gpu_name})"}
+    else:
+        out["three"] = {"status": "slow", "fix": web["fix"], "why": "no GPU, so WebGL runs on the CPU (SwiftShader): a "
+                        f"simple 3D shot took about 2x its length at 1080p30 on 8 cores, here about {2 * 8 / max(1, cores):.0f}x; "
+                        "heavy scenes (many objects, shadows) many times more"}
+
+    # Motion Canvas: a 2D canvas in headless Chrome, like Remotion
+    mc = dict(web)
+    if web["status"] != "unavailable":
+        mc["why"] = f"draws a 2D canvas in headless Chrome: 18 s of 1080p30 in 14 s on 8 cores, here about " \
+                    f"{14 * 8 / max(1, cores) / 18:.1f}x the video's length"
+    out["motion-canvas"] = mc
+
+    # Manim Community: Cairo on the CPU, one core per render
+    fix = []
+    if not t["manim_ce"]:
+        fix.append(("sudo apt install libcairo2-dev libpango1.0-dev pkg-config dvisvgm; " if p["os"] == "Linux" else
+                    "brew install cairo pango pkg-config; ") + str(HERE / "setup_manim_ce.sh"))
+    if not t["latex"] or not t["dvisvgm"]:
+        fix.append("Formulas need LaTeX and dvisvgm (sudo apt install texlive-latex-extra dvisvgm / brew install --cask mactex-no-gui)")
+    why = "draws with Cairo on the CPU, no GPU needed: 27 s of 1080p30 with a formula transform in 12 s"
+    out["manim-ce"] = {"status": "setup" if fix else "fast", "fix": fix,
+                       "why": why if t["manim_ce"] else "not set up yet; " + why}
+
+    # Blender: Eevee on a GPU, Cycles (a few samples, denoised) on the CPU
+    fix = [] if t["blender"] else [str(HERE / "setup_blender.sh") if p["os"] == "Linux" else "brew install --cask blender"]
+    if p["os"] == "Linux" and p["arch"] not in ("x86_64", "AMD64") and not t["blender"]:
+        out["blender"] = {"status": "unavailable", "fix": [], "why": f"Blender has no Linux build for {p['arch']}"}
+    elif ram < 4:
+        out["blender"] = {"status": "unavailable", "fix": [], "why": f"{ram} GB of RAM: Blender needs about 4 GB"}
+    elif gpu_name:
+        out["blender"] = {"status": "setup" if fix else "fast", "fix": fix, "why": f"renders with Eevee on the GPU ({gpu_name})"}
+    else:
+        per = 1.7 * 8 / max(1, cores)
+        out["blender"] = {"status": "slow", "fix": fix, "why": "no GPU, so it renders with Cycles on the CPU: about "
+                          f"{per:.1f} s per 960x540 frame here, so 30 s of video takes about {per * 900 / 60:.0f} min; "
+                          "keep 3D shots short or use three"}
 
     # the voice: Kokoro + Whisper on the CPU
     fix, v = [], p.get("voice") or {}

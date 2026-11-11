@@ -1,0 +1,434 @@
+{
+ "fps": 30,
+ "width": 1920,
+ "height": 1080,
+ "duration": 19.561,
+ "captions": false,
+ "theme": {
+  "name": "dark",
+  "bg": "#000000",
+  "fg": "#FFFFFF",
+  "dim": "#B4B4B4",
+  "accent": "#FFD700",
+  "on_accent": "#000000",
+  "ink": "#FFD700",
+  "good": "#3DDC84",
+  "bad": "#FF6B5A",
+  "blue": "#4DA3FF",
+  "panel": "#0D0D0D",
+  "line": "#FFFFFF",
+  "pointer": "#FF4646",
+  "font": "PT Serif",
+  "mono": "JetBrains Mono"
+ },
+ "estimated": [],
+ "lines": [
+  {
+   "key": "wa1",
+   "start": 1.5,
+   "end": 6.172,
+   "text": "[A water molecule] is [one oxygen atom] bonded to [two hydrogen atoms].",
+   "spans": [
+    {
+     "i": 0,
+     "text": "A water molecule",
+     "start": 1.5,
+     "end": 2.24
+    },
+    {
+     "i": 1,
+     "text": "one oxygen atom",
+     "start": 2.72,
+     "end": 3.76
+    },
+    {
+     "i": 2,
+     "text": "two hydrogen atoms.",
+     "start": 4.74,
+     "end": 5.84
+    }
+   ],
+   "words": [
+    {
+     "w": "A",
+     "start": 1.5,
+     "end": 1.58,
+     "span": 0
+    },
+    {
+     "w": "water",
+     "start": 1.58,
+     "end": 1.74,
+     "span": 0
+    },
+    {
+     "w": "molecule",
+     "start": 1.74,
+     "end": 2.24,
+     "span": 0
+    },
+    {
+     "w": "is",
+     "start": 2.24,
+     "end": 2.72,
+     "span": null
+    },
+    {
+     "w": "one",
+     "start": 2.72,
+     "end": 2.98,
+     "span": 1
+    },
+    {
+     "w": "oxygen",
+     "start": 2.98,
+     "end": 3.38,
+     "span": 1
+    },
+    {
+     "w": "atom",
+     "start": 3.38,
+     "end": 3.76,
+     "span": 1
+    },
+    {
+     "w": "bonded",
+     "start": 3.76,
+     "end": 4.48,
+     "span": null
+    },
+    {
+     "w": "to",
+     "start": 4.48,
+     "end": 4.74,
+     "span": null
+    },
+    {
+     "w": "two",
+     "start": 4.74,
+     "end": 4.92,
+     "span": 2
+    },
+    {
+     "w": "hydrogen",
+     "start": 4.92,
+     "end": 5.36,
+     "span": 2
+    },
+    {
+     "w": "atoms.",
+     "start": 5.36,
+     "end": 5.84,
+     "span": 2
+    }
+   ]
+  },
+  {
+   "key": "wa2",
+   "start": 6.672,
+   "end": 12.752,
+   "text": "The two bonds meet at [an angle of about one hundred and four degrees], so the molecule is [bent, not straight].",
+   "spans": [
+    {
+     "i": 0,
+     "text": "an angle of about one hundred and four degrees,",
+     "start": 7.812,
+     "end": 9.772
+    },
+    {
+     "i": 1,
+     "text": "bent, not straight.",
+     "start": 11.332,
+     "end": 12.432
+    }
+   ],
+   "words": [
+    {
+     "w": "The",
+     "start": 6.672,
+     "end": 6.752,
+     "span": null
+    },
+    {
+     "w": "two",
+     "start": 6.752,
+     "end": 6.912,
+     "span": null
+    },
+    {
+     "w": "bonds",
+     "start": 6.912,
+     "end": 7.192,
+     "span": null
+    },
+    {
+     "w": "meet",
+     "start": 7.192,
+     "end": 7.572,
+     "span": null
+    },
+    {
+     "w": "at",
+     "start": 7.572,
+     "end": 7.812,
+     "span": null
+    },
+    {
+     "w": "an",
+     "start": 7.812,
+     "end": 7.892,
+     "span": 0
+    },
+    {
+     "w": "angle",
+     "start": 7.892,
+     "end": 8.212,
+     "span": 0
+    },
+    {
+     "w": "of",
+     "start": 8.212,
+     "end": 8.392,
+     "span": 0
+    },
+    {
+     "w": "about",
+     "start": 8.392,
+     "end": 8.552,
+     "span": 0
+    },
+    {
+     "w": "one",
+     "start": 8.552,
+     "end": 8.872,
+     "span": 0
+    },
+    {
+     "w": "hundred",
+     "start": 8.552,
+     "end": 8.872,
+     "span": 0
+    },
+    {
+     "w": "and",
+     "start": 8.872,
+     "end": 8.552,
+     "span": 0
+    },
+    {
+     "w": "four",
+     "start": 8.552,
+     "end": 8.872,
+     "span": 0
+    },
+    {
+     "w": "degrees,",
+     "start": 8.872,
+     "end": 9.772,
+     "span": 0
+    },
+    {
+     "w": "so",
+     "start": 10.372,
+     "end": 10.572,
+     "span": null
+    },
+    {
+     "w": "the",
+     "start": 10.572,
+     "end": 10.672,
+     "span": null
+    },
+    {
+     "w": "molecule",
+     "start": 10.672,
+     "end": 10.972,
+     "span": null
+    },
+    {
+     "w": "is",
+     "start": 10.972,
+     "end": 11.332,
+     "span": null
+    },
+    {
+     "w": "bent,",
+     "start": 11.332,
+     "end": 11.552,
+     "span": 1
+    },
+    {
+     "w": "not",
+     "start": 11.912,
+     "end": 12.152,
+     "span": 1
+    },
+    {
+     "w": "straight.",
+     "start": 12.152,
+     "end": 12.432,
+     "span": 1
+    }
+   ]
+  },
+  {
+   "key": "wa3",
+   "start": 13.252,
+   "end": 17.561,
+   "text": "[Turn it around], and you see [it is flat]: all three atoms lie [in one plane].",
+   "spans": [
+    {
+     "i": 0,
+     "text": "Turn it around,",
+     "start": 13.252,
+     "end": 13.832
+    },
+    {
+     "i": 1,
+     "text": "it is flat:",
+     "start": 14.532,
+     "end": 14.972
+    },
+    {
+     "i": 2,
+     "text": "in one plane.",
+     "start": 16.572,
+     "end": 17.292
+    }
+   ],
+   "words": [
+    {
+     "w": "Turn",
+     "start": 13.252,
+     "end": 13.432,
+     "span": 0
+    },
+    {
+     "w": "it",
+     "start": 13.432,
+     "end": 13.572,
+     "span": 0
+    },
+    {
+     "w": "around,",
+     "start": 13.572,
+     "end": 13.832,
+     "span": 0
+    },
+    {
+     "w": "and",
+     "start": 13.832,
+     "end": 14.252,
+     "span": null
+    },
+    {
+     "w": "you",
+     "start": 14.252,
+     "end": 14.372,
+     "span": null
+    },
+    {
+     "w": "see",
+     "start": 14.372,
+     "end": 14.532,
+     "span": null
+    },
+    {
+     "w": "it",
+     "start": 14.532,
+     "end": 14.652,
+     "span": 1
+    },
+    {
+     "w": "is",
+     "start": 14.652,
+     "end": 14.732,
+     "span": 1
+    },
+    {
+     "w": "flat:",
+     "start": 14.732,
+     "end": 14.972,
+     "span": 1
+    },
+    {
+     "w": "all",
+     "start": 15.672,
+     "end": 15.712,
+     "span": null
+    },
+    {
+     "w": "three",
+     "start": 15.712,
+     "end": 15.932,
+     "span": null
+    },
+    {
+     "w": "atoms",
+     "start": 15.932,
+     "end": 16.212,
+     "span": null
+    },
+    {
+     "w": "lie",
+     "start": 16.212,
+     "end": 16.572,
+     "span": null
+    },
+    {
+     "w": "in",
+     "start": 16.572,
+     "end": 16.812,
+     "span": 2
+    },
+    {
+     "w": "one",
+     "start": 16.812,
+     "end": 16.952,
+     "span": 2
+    },
+    {
+     "w": "plane.",
+     "start": 16.952,
+     "end": 17.292,
+     "span": 2
+    }
+   ]
+  }
+ ],
+ "sections": [
+  {
+   "title": "1 \u00b7 A water molecule",
+   "first": "wa1",
+   "start": 0.5,
+   "end": 19.561
+  }
+ ],
+ "cues": [
+  {
+   "start": 1.5,
+   "end": 6.09,
+   "text": "A water molecule is one oxygen atom bonded to two hydrogen atoms."
+  },
+  {
+   "start": 6.672,
+   "end": 10.022,
+   "text": "The two bonds meet at an angle of about one hundred and four degrees,"
+  },
+  {
+   "start": 10.372,
+   "end": 12.682,
+   "text": "so the molecule is bent, not straight."
+  },
+  {
+   "start": 13.252,
+   "end": 15.222,
+   "text": "Turn it around, and you see it is flat:"
+  },
+  {
+   "start": 15.672,
+   "end": 17.542,
+   "text": "all three atoms lie in one plane."
+  }
+ ]
+}

@@ -34,27 +34,31 @@ Both were made from a one-line request, for interview prep, with ManimGX and the
 colors; their scenes now use Kokoro and the house style. [`examples/hash-tables/`](examples/hash-tables/)
 is a short Remotion video in the current style (1:18, rendered at 1080p30 in under a minute on an
 8 vCPU cloud VM with no GPU), and [`examples/sec/`](examples/sec/) an 11 minute ManimGX video with
-real math (*Self-Evolving Curriculum for LLM Reasoning*, Chen et al., 2025).
+real math (*Self-Evolving Curriculum for LLM Reasoning*, Chen et al., 2025). One short example per
+other framework, each rendered at 1080p30 on the same VM: [`examples/water-3d/`](examples/water-3d/)
+(three.js in Remotion), [`examples/linked-list-mc/`](examples/linked-list-mc/) (Motion Canvas),
+[`examples/gradient-descent-ce/`](examples/gradient-descent-ce/) (Manim Community) and
+[`examples/water-blender/`](examples/water-blender/) (Blender).
 
 ## How it decides
 
 1. **Visualization first.** Claude plans what is on screen in each section and names the needs:
    `text`, `diagram`, `chart`, `plot`, `formula`, `code`, `ui`, `image`, `timeline`,
-   `math-animation`, `3d`.
+   `vector-tween`, `math-animation`, `3d-math`, `3d`, `photoreal`.
 2. **Hardware second.** `python3 scripts/pick.py diagram chart formula` runs `scripts/hardware.py`
    (CPU, RAM, disk, GPU, Node, ManimGX, a few seconds of voice speed test).
-3. **Framework third.** It picks the first framework, fastest first, that does every need well and
-   runs here, and prints `FIX` lines (things to install) and `NOTICE` lines (hardware limits, which
+3. **Framework third.** Of the frameworks that do every need well, it picks the one that runs best
+   here, and prints `FIX` lines (things to install) and `NOTICE` lines (hardware limits, which
    Claude passes on to you with the feedback address).
 
-| framework | set up by the skill | good for | weak at | hardware | speed |
-|---|---|---|---|---|---|
-| **Remotion** | yes | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
-| **ManimGX** | yes | math: equations transforming, function graphs, geometry, linear algebra, 3D | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
-| Motion Canvas | no | Manim-style vector tweening, code, LaTeX | few agent examples | CPU (browser) | close to Remotion |
-| Manim Community | no | the same math, the most examples online | slow at 1080p, no GPU path | CPU (Cairo) | minutes per minute of video |
-| three.js (`@remotion/three`) | no | 3D that isn't math: models, molecules, scenes | needs WebGL; slow on the CPU | a GPU | GPU fast, CPU slow |
-| Blender | no | photoreal 3D, physics | slow to write and render | a GPU | minutes per second on the CPU |
+| framework | good for | weak at | hardware | speed |
+|---|---|---|---|---|
+| **Remotion** | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
+| **Motion Canvas** | Manim-style vector tweening: shapes and arrows moving and re-linking, code animations | charts, images, dense layout (no HTML/CSS) | CPU only; Node 18+ | 18 s of 1080p30 in 14 s on 8 CPU cores |
+| **three.js** (in Remotion, `@remotion/three`) | 3D that isn't math: molecules, models, objects, camera moves, mixed with any 2D block | photoreal lighting; heavy scenes on the CPU | a GPU for heavy scenes; simple ones render on the CPU (SwiftShader) | CPU (8 cores): a simple 20 s 3D shot at 1080p30 in 39 s |
+| **ManimGX** | math: equations transforming, graphs, geometry, linear algebra, 3D surfaces | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
+| **Manim Community** | the same 2D math as ManimGX, on the CPU, with the most examples online | 3D (slow in Cairo), UI, images | CPU only (Cairo); LaTeX and dvisvgm for formulas | 27 s of 1080p30 with a formula transform in 12 s |
+| **Blender** | photoreal 3D: lighting, materials, shadows, physics, cinematic shots | slow without a GPU; overkill for diagrams and text | a GPU (Eevee); on the CPU Cycles, about 1.7 s per 960x540 frame on 8 cores | GPU: minutes. CPU: about 15 min per 30 s of 960x540 |
 
 Timings are measured on an 8 vCPU cloud VM with no GPU: the same 8 minute explainer took 4.6 minutes
 in Remotion at 1920x1080, 30 fps, and 41 minutes in ManimGX (which there draws on the CPU). On a
@@ -144,7 +148,16 @@ uv tool install manimgx
 macOS (`brew install --cask mactex-no-gui`) or TeX Live on Linux. On Linux without a GPU, also
 `sudo apt install mesa-vulkan-drivers`.
 
-### 6. Start Claude Code
+### 6. Optional: Manim Community, Blender
+
+```bash
+~/.claude/skills/explainer-video/scripts/setup_manim_ce.sh   # needs Cairo, Pango, pkg-config; LaTeX + dvisvgm
+~/.claude/skills/explainer-video/scripts/setup_blender.sh    # Linux x86_64; macOS: brew install --cask blender
+```
+
+Motion Canvas and three.js need only Node; their packages install per video.
+
+### 7. Start Claude Code
 
 Open a new Claude Code session (skills load at startup) and ask for a video, or type `/explainer-video`.
 
@@ -212,6 +225,11 @@ python3 scripts/render.py examples/search-algorithms/search_algorithms.py
 - `templates/remotion/`: the Remotion project it copies: `src/kit.tsx` (sections, boxes, text, formulas,
   arrows, charts, plots, code, pictures, the laser pointer, captions, the layout check) and `tools/`
   (storyboard and budgeted render).
+- `templates/remotion/src/three.tsx`: 3D blocks for Remotion (`Scene3D` with camera moves, theme materials).
+- `scripts/motion_canvas.py`, `templates/motion-canvas/`: Motion Canvas projects (`new`, `check`, `render`), the kit and the headless renderer.
+- `scripts/manim_ce.py`, `scripts/manim_ce_kit.py`, `scripts/setup_manim_ce.sh`: Manim Community scenes timed to the narration, checks, budgeted render.
+- `scripts/blender.py`, `scripts/blender_kit.py`, `scripts/setup_blender.sh`: Blender scenes timed to the narration, checks, budgeted render.
+- `scripts/timeline.py`: narration times, track, sync and layout reports and storyboard sheets, shared by every framework.
 - `scripts/render.py`: ManimGX renders at the best format that finishes within a time budget, with progress.
 - `scripts/kokoro_voice.py`: the narration as a ManimGX scene's `voice` (`lfm_voice.py` keeps old scenes working).
 - `scripts/stage.py`: ManimGX's laser pointer and the check for speech over an empty or frozen screen.

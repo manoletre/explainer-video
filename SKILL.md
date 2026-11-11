@@ -1,6 +1,6 @@
 ---
 name: explainer-video
-description: Make a narrated explainer video (MP4) about a paper, method or concept, optionally tied to the user's own project. Picks the fastest framework that shows it well on this machine (Remotion for diagrams, charts and text; ManimGX for math animation and 3D), voices it locally with Kokoro, in the manoletre.com style (PT Serif, gold on black, or light). Use whenever the user asks for an animation, an animated explainer, or an explainer video.
+description: Make a narrated explainer video (MP4) about a paper, method or concept, optionally tied to the user's own project. Picks the fastest framework that shows it well on this machine (Remotion for diagrams, charts and text; Motion Canvas for vector tweening; three.js for 3D objects; ManimGX or Manim Community for math animation; Blender for photoreal 3D), voices it locally with Kokoro, in the manoletre.com style (PT Serif, gold on black, or light). Use whenever the user asks for an animation, an animated explainer, or an explainer video.
 ---
 
 # Narrated explainer videos
@@ -27,26 +27,31 @@ the idea relates to, a closing part about how it applies there. References in th
    | `ui` | screens, terminals, app mockups, chat transcripts |
    | `image` | photos, screenshots, figures from a paper |
    | `timeline` | events and phases along a time axis |
+   | `vector-tween` | 2D shapes and paths moving, re-linking, re-arranging with smooth tweens (a node inserted, pointers retargeted) |
    | `math-animation` | an equation transforming term by term, shapes morphing, geometric constructions, vector fields, linear maps on a grid |
-   | `3d` | surfaces, solids, 3D camera moves |
+   | `3d-math` | 3D surfaces, solids of revolution, 3D vector fields, with camera moves |
+   | `3d` | 3D objects that aren't math: molecules, models, products, rooms, with camera moves |
+   | `photoreal` | realistic lighting, materials and shadows, physics, cinematic shots |
 
 2. **What can this machine do?** `python3 <skill>/scripts/pick.py <needs...>` (for example
    `pick.py diagram chart formula`). It runs `hardware.py` (CPU, RAM, disk, GPU, Node, ManimGX,
    the voice, with a few seconds' voice speed test) and prints each framework's status here.
-3. **The fastest framework that does the job well.** pick.py prints `CHOICE`: the first framework,
-   fastest first, that does every need well and runs here. The table (`pick.py --list` prints it):
+3. **The fastest framework that does the job well.** pick.py prints `CHOICE`: of the frameworks that
+   do every need well, the one that runs best here. The table (`pick.py --list` prints it):
 
-   | framework | set up by the skill | good for | weak at | hardware | speed |
-   |---|---|---|---|---|---|
-   | **Remotion** | yes | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
-   | **ManimGX** | yes | math: equations transforming, function graphs, geometry, linear algebra, 3D | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
-   | Motion Canvas | no | Manim-style vector tweening, code, LaTeX | few agent examples | CPU (browser) | close to Remotion |
-   | Manim Community | no | the same math, the most examples online | slow at 1080p, no GPU path | CPU (Cairo) | minutes per minute of video |
-   | three.js (`@remotion/three`) | no | 3D that isn't math: models, molecules, scenes | needs WebGL; slow on the CPU | a GPU | GPU fast, CPU slow |
-   | Blender | no | photoreal 3D, physics | slow to write and render | a GPU | minutes per second on the CPU |
+   | framework | good for | weak at | hardware | speed |
+   |---|---|---|---|---|
+   | **Remotion** | diagrams, charts, text, code, UI, images, static formulas (KaTeX): everything 2D | morphing equations and shapes, real 3D | CPU only; 2 GB RAM (about 1 GB per Chrome worker); Node 18+ | 8 min of 1080p30 in about 5 min on 8 CPU cores |
+   | **Motion Canvas** | Manim-style vector tweening: shapes and arrows moving and re-linking, code animations | charts, images, dense layout (no HTML/CSS) | CPU only; Node 18+ | 18 s of 1080p30 in 14 s on 8 CPU cores |
+   | **three.js** (in Remotion, `@remotion/three`) | 3D that isn't math: molecules, models, objects, camera moves, mixed with any 2D block | photoreal lighting; heavy scenes on the CPU | a GPU for heavy scenes; simple ones render on the CPU (SwiftShader) | CPU (8 cores): a simple 20 s 3D shot at 1080p30 in 39 s |
+   | **ManimGX** | math: equations transforming, graphs, geometry, linear algebra, 3D surfaces | UI, images, dense text; slow without a GPU | a Metal or Vulkan GPU; without one Mesa's lavapipe on the CPU | GPU: 1080p60 in minutes. CPU (8 cores): 41 min at 1080p30, 9 min at 540p |
+   | **Manim Community** | the same 2D math as ManimGX, on the CPU, with the most examples online | 3D (slow in Cairo), UI, images | CPU only (Cairo); LaTeX and dvisvgm for formulas | 27 s of 1080p30 with a formula transform in 12 s |
+   | **Blender** | photoreal 3D: lighting, materials, shadows, physics, cinematic shots | slow without a GPU; overkill for diagrams and text | a GPU (Eevee); on the CPU Cycles, about 1.7 s per 960x540 frame on 8 cores | GPU: minutes. CPU: about 15 min per 30 s of 960x540 |
 
-   Use a framework the skill doesn't set up only if the user asks for it; if one would clearly be
-   better, say so. Most explainers (systems, algorithms, pipelines, results) are Remotion videos.
+   On equal hardware it prefers them in this order; a framework that is slow or can't run here loses
+   to one that does the same needs and runs fast (ManimGX without a GPU loses math to Manim Community,
+   with a NOTICE). Most explainers (systems, algorithms, pipelines, results) are Remotion videos; use
+   three.js for a 3D shot inside one, and Blender only when it has to look real.
 4. **Act on pick.py's output.** Do every `FIX` (install Node, run `setup_voice.sh`, ...). Every
    `NOTICE` is a limit of this hardware: a framework that would do the job best can't run here or is
    slow, or Kokoro can't narrate or is slow. Tell the user in your next message, before the long work:
@@ -181,6 +186,58 @@ Both frameworks check this for you (`sync_report.txt`).
   minutes): that is the NOTICE to give the user, with hi@manoletre.com. Plan ManimGX videos for the
   machine: on a CPU 6–8 minutes, hold finished pictures with `self.wait` (held frames cost nothing),
   no long full-screen transforms. `--plan` only estimates; `-r 1280x720 --fps 30` forces a format.
+
+### three.js (3D inside a Remotion video)
+
+- It is the Remotion workflow above; `remotion.py new` copies `src/three.tsx` too. In `Video.tsx`,
+  `import {Scene3D, Gold, Plain, Pop} from './three'` and put meshes in a `<Scene3D at={...} camera={[0, 0.2, 6]}
+  moves={[{at: at('wa3', 0), dur: 2, position: [6, 0.2, 0]}]}>` next to the usual 2D blocks (labels, captions).
+  `Gold`/`Plain` are theme materials, `Pop` grows its children in at a time.
+- Read every `at()` outside `<Scene3D>` and pass the times in as props: the 3D renderer draws its
+  children on its own schedule, so the sync check can't see `at()` calls made inside it.
+- `remotion.py check|render` switch Chrome's WebGL on for such videos: ANGLE on a GPU, SwiftShader
+  on the CPU (slow for heavy scenes: few objects, short 3D shots). Example: `examples/water-3d/`.
+
+### Motion Canvas
+
+- `python3 <skill>/scripts/motion_canvas.py new <dir>` copies `templates/motion-canvas/` to
+  `<dir>/motion-canvas/` (about 300 MB of packages) and writes the narration timeline. Write the video
+  in `src/scenes/video.tsx`: a generator that waits for the narration, with `src/kit.tsx`:
+  `yield* section(view, 'll1')` (clears the stage, shows the title), `yield* beat('ll1', 1,
+  arrow().end(1, 0.5))` (plays when bracket 1 of line ll1 is spoken), `yield* finish()` at the end.
+  Text in `C.font` (PT Serif), colors from `C` (the theme). Coordinates: (0, 0) is the center, y down.
+- `motion_canvas.py check <dir>` renders a half-size preview in headless Chrome, the storyboard
+  sheets and `sync_report.txt`. `render <dir>` scales the preview's time to the full size, renders
+  the best size within `--budget`, and joins the frames and the narration with ffmpeg; `.srt` beside
+  it. Example: `examples/linked-list-mc/`.
+
+### Manim Community
+
+- Set up: `scripts/setup_manim_ce.sh` (its own venv; needs Cairo and Pango headers, and LaTeX with
+  `dvisvgm` for `MathTex`), `scripts/setup_fonts.sh`.
+- The scene `<slug>.py` beside `narration.py` subclasses `manim_ce_kit.Explainer` and sets
+  `narration = HERE / "narration.py"`. In `construct()`: `self.section("gd1")` (clears the screen,
+  shows the title), `self.beat("gd1", 1, Create(axes))` (plays when bracket 1 of gd1 is spoken, as long
+  as its words), `self.highlight(mob)` (gold marker, as an animation). Text with `K.T(...)`, formulas
+  with `K.M(...)`, panels with `K.card(...)`, colors from `K.S`. The kit adds the narration as sound and
+  holds the last picture until it ends.
+- `python3 <skill>/scripts/manim_ce.py check <slug>.py` renders an 854x480 preview, stills after every
+  bracket, the layout report (overlaps and off-frame, at every beat; graph pieces may overlap) and the
+  sync report. `render <slug>.py` scales the preview's time per format and renders the best within
+  `--budget`. Example: `examples/gradient-descent-ce/`.
+
+### Blender
+
+- Set up: `scripts/setup_blender.sh` (Blender 4.2 LTS for Linux x86_64; on macOS `brew install --cask
+  blender`), `scripts/setup_fonts.sh`.
+- The scene `<slug>.py` beside `narration.py` is a Blender script with `scripts/blender_kit.py`:
+  `K.setup()`, objects (`K.sphere`, `K.box`, `K.cylinder(a, b, r)`, `K.text`), materials (`K.gold()`,
+  `K.plain()`, `K.material(color, metal, rough, emit)`), timed moves (`K.grow(obj, K.at("wa1", 1))`,
+  `K.move`, `K.spin`, `K.camera_to(loc, t, dur, look)`), then `K.finish()`. Times are seconds.
+- `python3 <skill>/scripts/blender.py check <slug>.py` renders half-size stills after every bracket and
+  the sync report; `render <slug>.py` estimates from them and renders the best size within `--budget`
+  (Eevee on a GPU; Cycles at 16 samples, denoised, on the CPU), then joins frames and narration.
+  Without a GPU keep Blender shots short. Example: `examples/water-blender/`.
 
 Check the result either way: duration with `ffprobe`, a few frames
 (`ffmpeg -ss T -i X.mp4 -frames:v 1 f.png`) and the `.srt`.
