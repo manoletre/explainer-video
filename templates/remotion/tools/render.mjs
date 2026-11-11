@@ -17,13 +17,16 @@ const cores = os.availableParallelism ? os.availableParallelism() : os.cpus().le
 const ramGb = os.totalmem() / 2 ** 30;
 const concurrency = Number(opt('--concurrency', Math.max(1, Math.min(cores, Math.floor(ramGb / 1.0)))));
 const inputProps = {captions: args.includes('--captions')};
+// WebGL for 3D (src/three.tsx): angle on a GPU, swangle (SwiftShader, on the CPU) without one
+const gl = opt('--gl', process.env.EXPLAINER_GL || null);
+const chromiumOptions = gl ? {gl} : {};
 const LADDER = [1, 2 / 3, 1 / 2];
 const say = s => console.log(s);
 
 await ensureBrowser();
 const t0 = Date.now();
 const serveUrl = await bundle({entryPoint: path.resolve('src/index.tsx')});
-const browser = await openBrowser('chrome');
+const browser = await openBrowser('chrome', {chromiumOptions});
 const composition = await selectComposition({serveUrl, id: 'Explainer', inputProps, puppeteerInstance: browser});
 const N = composition.durationInFrames;
 const size = s => `${Math.round(composition.width * s)}x${Math.round(composition.height * s)}`;
@@ -33,7 +36,7 @@ async function sample(scale) {
   const n = Math.min(N, Math.max(60, 4 * concurrency * 8));
   const a = Math.max(0, Math.floor(N / 2 - n / 2));
   const t = Date.now();
-  await renderMedia({composition, serveUrl, inputProps, codec: 'h264', scale, concurrency, muted: true,
+  await renderMedia({composition, serveUrl, inputProps, codec: 'h264', scale, concurrency, muted: true, chromiumOptions,
     frameRange: [a, a + n - 1], outputLocation: path.join(tmp, 'sample.mp4'), puppeteerInstance: browser});
   return (Date.now() - t) / 1000 / n;
 }
@@ -60,7 +63,7 @@ fs.mkdirSync(path.dirname(output), {recursive: true});
 const start = Date.now();
 let lastPrint = 0;
 await renderMedia({
-  composition, serveUrl, inputProps, codec: 'h264', crf: 18, scale: pick, concurrency, outputLocation: output,
+  composition, serveUrl, inputProps, codec: 'h264', crf: 18, scale: pick, concurrency, outputLocation: output, chromiumOptions,
   puppeteerInstance: browser,
   onProgress: ({progress}) => {
     const now = (Date.now() - start) / 1000;
